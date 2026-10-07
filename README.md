@@ -2,7 +2,7 @@
 
 Kit de skills para projetos pessoais e de pequenos grupos. A ideia é sair rapidamente de uma proposta para código funcional, com verificações proporcionais ao risco e espaço para evoluir a arquitetura conforme o projeto cresce.
 
-As skills ficam em `.agents/skills/<nome-da-skill>/SKILL.md`. Cada pasta é independente e pode incluir seus próprios recursos. A primeira skill é `nestjs-backend-bootstrap`, para iniciar ou estender backends NestJS. Ainda não há instalador.
+As skills ficam em `.agents/skills/<nome-da-skill>/SKILL.md`. Cada pasta é independente e pode incluir seus próprios recursos. O kit inclui `nestjs-backend-bootstrap` e `spring-java-bootstrap`, para iniciar ou estender backends nessas stacks. Ainda não há instalador.
 
 ## Usar em um projeto
 
