@@ -10,7 +10,9 @@ Cada skill deve ocupar `.agents/skills/<nome-da-skill>/SKILL.md`. Use nomes curt
 
 ## Uso em outros projetos
 
-Quando o usuário pedir para configurar um projeto com este kit, localize este repositório e crie, no projeto de destino, `.agents/skills/<nome-da-skill>` como link simbólico para cada pasta de skill daqui. Preserve skills já existentes no destino: não substitua arquivos ou links sem orientação do usuário. Verifique que cada link resolve para um `SKILL.md` e informe quais skills ficaram disponíveis. Links refletem alterações feitas aqui; se o kit mudar de lugar ou não estiver presente na máquina, será preciso recriá-los. Não copie as skills como configuração padrão.
+Copie a estrutura base para uma pasta `harness` na raiz de um workspace com vários repositórios e execute `node harness/scripts/harness.mjs init`. O harness mantém `inventory.json` com caminhos relativos, skills, orientações gerais por ferramenta e orientações específicas por repositório. Cada repositório recebe links simbólicos para as skills e orientações mantidas sob `harness`. Os nomes dos repositórios são livres. Se a ferramenta não puder ser identificada, o agente pergunta ao usuário. Remover um repositório do inventário não apaga seus arquivos nem links.
+
+O comando esperado é “Configure o harness para este workspace”. O agente pode criar e editar orientações e usar skills de bootstrap para projetos novos. O inicializador Node.js não tem dependências e funciona em Windows e Linux, desde que o sistema permita criar symlinks. Consulte `docs/specs/workspace-harness/` para o contrato e os destinos suportados.
 
 ## Desenvolvimento de skills
 

@@ -1,11 +1,15 @@
 # Harness Pocket Kit
 
-Kit de skills para projetos pessoais e de pequenos grupos. A ideia é sair rapidamente de uma proposta para código funcional, com verificações proporcionais ao risco e espaço para evoluir a arquitetura conforme o projeto cresce.
+Kit de skills para manter orientações de agentes e apoiar o início e o desenvolvimento de projetos pessoais ou de pequenos grupos. As skills atuais incluem `nestjs-backend-bootstrap` e `spring-java-bootstrap`.
 
-As skills ficam em `.agents/skills/<nome-da-skill>/SKILL.md`. Cada pasta é independente e pode incluir seus próprios recursos. O kit inclui `nestjs-backend-bootstrap` e `spring-java-bootstrap`, para iniciar ou estender backends nessas stacks. Ainda não há instalador.
+## Workspace com vários repositórios
 
-## Usar em um projeto
+Copie a estrutura deste kit para `workspace/harness` e inicialize o inventário com Node.js:
 
-Peça ao agente: **“Configure este projeto a partir do Harness Pocket Kit.”** Ele deve criar um link simbólico em `<projeto>/.agents/skills/` para cada pasta de skill deste repositório e conferir se os links funcionam. Assim, mudanças nas skills do kit passam a ser vistas pelos projetos ligados a ele. O kit precisa continuar acessível no mesmo caminho; links locais não são portáveis para outra máquina sem recriação.
+```sh
+node harness/scripts/harness.mjs init
+```
 
-Consulte [AGENTS.md](AGENTS.md) para as regras de desenvolvimento e integração das skills.
+Na primeira execução, ele registra os repositórios Git nas pastas diretamente sob o workspace. Para incluir um projeto aninhado ou ainda sem Git, use `node harness/scripts/harness.mjs add <caminho-relativo>`. Depois peça ao agente: **“Configure o harness para este workspace.”** Ele cria ou atualiza orientações em `harness/` e liga cada repositório à ferramenta escolhida e às skills por symlink. Remover um projeto do inventário não apaga seus links.
+
+Consulte [a especificação do workspace](docs/specs/workspace-harness/spec.md) e [AGENTS.md](AGENTS.md) para detalhes.
