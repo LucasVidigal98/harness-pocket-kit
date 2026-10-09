@@ -23,3 +23,7 @@ Somente a ferramenta selecionada recebe novos arquivos de orientação. Os docum
 A lista inicial pode mudar. Após adicionar, renomear ou remover documentos diretamente na pasta do projeto, execute `node harness/scripts/harness.mjs sync <caminho>` da raiz do workspace. Edições apenas no conteúdo são lidas diretamente. O marcador `.guidance-initialized` evita recriar documentos removidos; preserve-o. Fontes existentes e destinos ocupados são preservados, inclusive durante a atualização de um Harness anterior.
 
 Verificação específica do inicializador: `node --test scripts/harness.test.mjs`. Os testes usam workspaces temporários e não exigem dependências.
+
+## Licença
+
+Distribuído sob a [licença MIT](LICENSE).
