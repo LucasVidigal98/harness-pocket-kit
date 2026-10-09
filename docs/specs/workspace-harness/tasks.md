@@ -6,3 +6,7 @@
 - [x] Criar o inicializador multiplataforma para a estrutura base e o inventário inicial.
 - [x] Criar uma skill de bootstrap que prepare orientações para um repositório novo usando a mesma estrutura.
 - [x] Documentar criação de links simbólicos e preservação de destinos existentes em Windows e Linux.
+- [x] Criar nove documentos temáticos iniciais, preservando conteúdo existente e remoções posteriores.
+- [x] Preparar somente a ferramenta selecionada e gerar índices portáteis dos documentos.
+- [x] Integrar documentação progressiva à configuração e aos bootstraps NestJS e Spring Java.
+- [x] Incluir manutenção contínua nas orientações utilizadas durante o desenvolvimento.

@@ -16,6 +16,8 @@ O comando esperado é “Configure o harness para este workspace”. O agente po
 
 ## Desenvolvimento de skills
 
+As orientações do Harness são documentação viva: conforme tarefas adotam decisões ou alteram o projeto, atualize os documentos pertinentes, preservando conteúdo manual válido. Distinga decisões aprovadas, implementação existente e pendências. Mantenha o estado vigente nos documentos temáticos e o histórico resumido de decisões e motivos conhecidos em `decisions.md`. O bootstrap serve à criação inicial; a manutenção continua durante o desenvolvimento.
+
 Mantenha cada skill focada em uma tarefa e descreva entradas, passos e resultado esperado. Prefira instruções a scripts quando a execução não exigir automação determinística. Inclua exemplos e uma checagem pequena quando houver comportamento não trivial. Antes de concluir, revise o gatilho da `description` e teste a skill com uma solicitação representativa. Não adicione dependências, ferramentas ou etapas de aprovação sem necessidade concreta.
 
 ## Comandos e contribuições

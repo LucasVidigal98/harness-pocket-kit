@@ -15,7 +15,8 @@ Permitir configurar e manter as orientações de agente de todos os repositório
 3. O inventário guarda caminhos relativos à raiz do workspace. O nome de cada diretório identifica o projeto; não há categorias obrigatórias como backend ou frontend. Em execuções seguintes, o inventário existente é preservado e novos repositórios são adicionados explicitamente.
 4. O agente identifica a ferramenta de agente usada em cada repositório. Se não conseguir, pergunta qual ferramenta configurar.
 5. O agente cria ou atualiza as orientações gerais e específicas do repositório, sincroniza os arquivos derivados e cria links simbólicos de filesystem para disponibilizá-las no repositório. Destinos ocupados são preservados e reportados.
-6. Quando um repositório novo for iniciado ou adicionado, o agente pode usar uma skill de bootstrap para preparar ou revisar suas orientações.
+6. Para uma aplicação nova, o bootstrap coordena o preenchimento progressivo das orientações conforme o escopo é validado e implementado. Aplicações existentes são documentadas pela configuração, sem executar novamente o bootstrap.
+7. Durante o desenvolvimento, o agente consulta e atualiza os documentos pertinentes às decisões adotadas e ao código alterado. Decisões, implementação e pendências devem ficar distintas; pontos abertos não bloqueiam trabalho independente.
 
 ## Critérios de aceite
 
@@ -27,6 +28,14 @@ Permitir configurar e manter as orientações de agente de todos os repositório
 - O agente pode criar e editar orientações, inclusive durante o bootstrap de um projeto novo.
 - Retirar um repositório do inventário não remove seus arquivos nem seus links automaticamente.
 - O inicializador é uma implementação Node.js sem dependências e funciona em Windows e Linux quando o sistema permite criar symlinks.
+
+## Documentos do projeto
+
+Cada projeto começa com nove templates mínimos: `architecture.md`, `api_conventions.md`, `persistence.md`, `configuration.md`, `tests.md`, `api_docs.md`, `decisions.md`, `business_rules.md` e `security.md`. O contrato detalhado está em [project-guidance.md](../../../.agents/skills/configure-workspace-harness/references/project-guidance.md).
+
+O agente preenche projetos existentes a partir de evidências; pastas vazias mantêm templates e decisões já conhecidas. Swagger é o padrão para novas APIs compatíveis; escolhas existentes ou alternativas do usuário são respeitadas. Não registrar secrets nem inventar decisões para preencher documentos. Novos documentos podem ser acrescentados, renomeados ou removidos conforme o projeto evolui.
+
+Somente a ferramenta selecionada recebe novos arquivos específicos. Conteúdo manual válido é preservado. Os documentos temáticos contêm o estado vigente; `decisions.md` guarda decisões e motivos conhecidos em entradas curtas, identificando decisões substituídas.
 
 ## Fora de escopo
 

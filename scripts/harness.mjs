@@ -9,10 +9,27 @@ const inventoryPath = path.join(harnessDir, 'inventory.json');
 const commonCodexPath = path.join(harnessDir, 'common', 'codex', 'AGENTS.md');
 const commonCursorPath = path.join(harnessDir, 'common', 'cursor', 'rules', 'general.mdc');
 const skillsPath = path.join(harnessDir, '.agents', 'skills');
+const livingGuidance = `Antes de trabalhar, consulte os documentos do Harness pertinentes à tarefa. Conforme o usuário adota decisões e o projeto evolui, atualize os documentos afetados no mesmo trabalho.
+Preserve conteúdo manual válido. Diferencie decisões aprovadas, implementação existente e pendências; ideias em discussão não são decisões. Não invente justificativas nem registre valores de secrets.
+Os documentos temáticos descrevem o estado vigente; decisions.md registra decisões relevantes e seus motivos conhecidos em tópicos curtos, identificando decisões substituídas. Atualize também orientações compartilhadas quando a decisão realmente valer para outros projetos.
+Documentos podem ser adicionados, renomeados ou removidos conforme a necessidade. Após mudar a lista ou as fontes de orientação da ferramenta, execute a sincronização indicada abaixo. Não é necessário executar bootstrap para manter a documentação.
+Quando uma skill em .agents/skills/ corresponder à tarefa, leia seu SKILL.md e siga suas instruções.`;
+
+const documents = {
+  'architecture.md': ['Arquitetura', 'Organização, camadas, responsabilidades, limites e direção das dependências adotadas.'],
+  'api_conventions.md': ['Convenções da API', 'Rotas, verbos e status HTTP, DTOs, validação, requisições, respostas e erros; paginação e versionamento quando aplicáveis.'],
+  'persistence.md': ['Persistência', 'Armazenamento SQL, NoSQL, arquivos ou outras soluções; acesso, repositórios, mapeamentos, transações e migrations (ferramenta, nomes, versões e controle de execução).'],
+  'configuration.md': ['Configuração', 'Inventário e localização de YAML, properties, .env, perfis, data sources e integrações; variáveis obrigatórias, padrões e precedência. Referencie a origem de secrets, nunca seus valores.'],
+  'tests.md': ['Testes unitários', 'Ferramentas, organização, execução, mocks/fakes/stubs e cobertura. Testes unitários devem verificar comportamentos sem banco, rede ou infraestrutura externa. Metas de cobertura somente quando definidas.'],
+  'api_docs.md': ['Documentação da API', 'Biblioteca, configuração, geração, acesso e convenções para endpoints, DTOs, respostas e erros. Swagger é o padrão para novas APIs compatíveis; preserve a solução existente ou a alternativa escolhida pelo usuário.'],
+  'decisions.md': ['Decisões do projeto', 'Registre em tópicos curtos o que foi decidido ou alterado, o motivo quando conhecido e decisões substituídas. Diferencie decisão aprovada de implementação concluída.'],
+  'business_rules.md': ['Regras de negócio', 'Condições, restrições, cálculos e comportamentos vigentes, agrupados por área do domínio; exemplos quando úteis.'],
+  'security.md': ['Segurança', 'Autenticação, autorização, API keys e mecanismos de acesso adotados. Referencie credenciais sem registrar valores. Escolhas futuras podem permanecer pendentes.'],
+};
 
 const templates = [
-  [commonCodexPath, '# Regras gerais do workspace\n\nAdicione aqui orientações compartilhadas pelos repositórios deste workspace.\n'],
-  [commonCursorPath, '---\ndescription: Regras gerais compartilhadas pelo workspace\nalwaysApply: true\n---\n\nAdicione aqui orientações compartilhadas pelos repositórios deste workspace. Quando uma skill em `.agents/skills/` corresponder à tarefa, leia seu `SKILL.md` e siga suas instruções.\n'],
+  [commonCodexPath, `# Regras gerais do workspace\n\n${livingGuidance}\n`],
+  [commonCursorPath, `---\ndescription: Regras gerais compartilhadas pelo workspace\nalwaysApply: true\n---\n\n${livingGuidance}\n`],
 ];
 
 function usage() {
@@ -80,13 +97,13 @@ async function writeIfMissing(filePath, content) {
   return true;
 }
 
-function projectTemplates(repoPath) {
+function projectTemplates(repoPath, tool) {
   const name = path.posix.basename(repoPath);
   const base = projectDir(repoPath);
   return [
     [path.join(base, 'codex', 'project.md'), `# Orientações específicas: ${name}\n\nDescreva aqui o propósito, os limites e as convenções deste repositório.\n`],
     [path.join(base, 'cursor', 'project.mdc'), `---\ndescription: Orientações específicas do repositório ${name}\nalwaysApply: true\n---\n\nDescreva aqui o propósito, os limites e as convenções deste repositório.\n`],
-  ];
+  ].filter(([filePath]) => path.basename(path.dirname(filePath)) === tool);
 }
 
 async function loadInventory() {
@@ -122,7 +139,14 @@ async function saveInventory(inventory) {
 }
 
 async function scaffoldProject(repoPath) {
-  for (const [filePath, content] of projectTemplates(repoPath)) await writeIfMissing(filePath, content);
+  const base = projectDir(repoPath);
+  const marker = path.join(base, '.guidance-initialized');
+  await ensureHarnessDirectory(base);
+  if (await exists(marker)) return;
+  for (const [filename, [title, description]] of Object.entries(documents)) {
+    await writeIfMissing(path.join(base, filename), `# ${title}\n\n${description}\n\n## Definições\n\nA preencher com decisões consolidadas e o estado real do projeto.\n\n## Pendências\n\nAinda não avaliado. Indique o que falta definir ou se o assunto não se aplica.\n`);
+  }
+  await writeIfMissing(marker, 'Templates iniciais criados. Não remover: documentos ausentes não devem ser recriados automaticamente.\n');
 }
 
 async function addRepository(inventory, inputPath) {
@@ -143,13 +167,14 @@ async function addRepository(inventory, inputPath) {
   return repo;
 }
 
-async function ensureTemplateFiles() {
-  for (const [filePath, content] of templates) await writeIfMissing(filePath, content);
+async function ensureTemplateFiles(tool) {
+  for (const [filePath, content] of templates) {
+    if (filePath === (tool === 'codex' ? commonCodexPath : commonCursorPath)) await writeIfMissing(filePath, content);
+  }
 }
 
 async function init() {
   await mkdir(harnessDir, { recursive: true });
-  await ensureTemplateFiles();
   const inventoryExisted = await exists(inventoryPath);
   const inventory = await loadInventory();
   if (!inventoryExisted) {
@@ -191,8 +216,28 @@ async function assertSafeRepo(repoPath) {
   }
 }
 
-function generatedAgents(common, specific) {
-  return `<!-- Gerado por harness/scripts/harness.mjs; edite as fontes em common/codex e projects/<path>/codex. -->\n${common.trim()}\n\n${specific.trim()}\n`;
+async function documentGuide(repoPath) {
+  const base = projectDir(repoPath);
+  const relativeBase = path.relative(repoDir(repoPath), base).split(path.sep).join('/');
+  const entries = await readdir(base, { withFileTypes: true });
+  const names = entries.filter((entry) => entry.isFile() && entry.name.endsWith('.md')).map((entry) => entry.name).sort();
+  const script = path.relative(repoDir(repoPath), path.join(harnessDir, 'scripts', 'harness.mjs')).split(path.sep).join('/');
+  return `# Documentação viva do projeto\n\n${livingGuidance}\n\nTodos os caminhos abaixo são relativos à raiz do repositório da aplicação, não ao arquivo de regras nem ao destino do symlink. As fontes ficam em ${JSON.stringify(relativeBase)}.\n\n${names.map((name) => `- ${JSON.stringify(`${relativeBase}/${name}`)}`).join('\n') || 'Nenhum documento temático presente.'}\n\nSincronização a partir da raiz do repositório: node ${JSON.stringify(script)} sync ${JSON.stringify(repoPath)}\n`;
+}
+
+async function writeGenerated(output, content) {
+  if (await exists(output)) {
+    const stat = await lstat(output);
+    if (!stat.isFile() || stat.isSymbolicLink()) throw new Error(`Arquivo de saída inválido; preservado: ${output}`);
+    const existing = await readFile(output, 'utf8');
+    if (!existing.includes('<!-- Gerado por harness/scripts/harness.mjs;')) throw new Error(`Arquivo de saída não gerado pelo harness; preservado: ${output}`);
+    if (existing === content) return;
+    const temporaryPath = `${output}.tmp`;
+    await writeFile(temporaryPath, content, { flag: 'wx' });
+    await rename(temporaryPath, output);
+  } else {
+    await writeIfMissing(output, content);
+  }
 }
 
 async function ensureFileLink(target, linkPath) {
@@ -252,27 +297,15 @@ async function syncProject(repoPath, tool) {
   await assertSafeRepo(repoPath);
   const base = projectDir(repoPath);
   await scaffoldProject(repoPath);
+  await ensureTemplateFiles(tool);
+  for (const [filePath, content] of projectTemplates(repoPath, tool)) await writeIfMissing(filePath, content);
+  const guide = await documentGuide(repoPath);
+  const generatedNotice = '<!-- Gerado por harness/scripts/harness.mjs; edite as fontes em common/ e projects/<path>/. -->';
   if (tool === 'codex') {
     const common = await readFile(commonCodexPath, 'utf8');
     const specific = await readFile(path.join(base, 'codex', 'project.md'), 'utf8');
     const output = path.join(base, 'codex', 'AGENTS.md');
-    const content = generatedAgents(common, specific);
-    if (await exists(output)) {
-      if ((await lstat(output)).isSymbolicLink()) {
-        throw new Error(`Arquivo de saída não pode ser um link simbólico; preservado: ${output}`);
-      }
-      const existing = await readFile(output, 'utf8');
-      if (!existing.startsWith('<!-- Gerado por harness/scripts/harness.mjs;')) {
-        throw new Error(`Arquivo de saída existe e não foi gerado pelo harness; preservado: ${output}`);
-      }
-      if (existing !== content) {
-        const temporaryPath = `${output}.tmp`;
-        await writeFile(temporaryPath, content, { flag: 'wx' });
-        await rename(temporaryPath, output);
-      }
-    } else {
-      await writeIfMissing(output, content);
-    }
+    await writeGenerated(output, `${generatedNotice}\n${common.trim()}\n\n${specific.trim()}\n\n${guide}`);
   }
 
   if (tool === 'cursor') {
@@ -282,6 +315,7 @@ async function syncProject(repoPath, tool) {
     const projectRule = path.join(cursorRulesDir, 'harness-project.mdc');
     await ensureFileLink(commonCursorPath, generalRule);
     await ensureFileLink(path.join(base, 'cursor', 'project.mdc'), projectRule);
+    await writeGenerated(path.join(cursorRulesDir, 'harness-documents.mdc'), `---\ndescription: Documentação viva do projeto\nalwaysApply: true\n---\n${generatedNotice}\n${guide}`);
   }
 }
 

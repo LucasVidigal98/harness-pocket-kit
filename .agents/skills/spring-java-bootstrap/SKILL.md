@@ -1,6 +1,6 @@
 ---
 name: spring-java-bootstrap
-description: Plan or initialize a Java Spring Boot project using Clean Architecture, DDD, and Hexagonal Architecture (Ports & Adapters). Use when deciding project tooling in a reviewable YAML file or implementing a project from a YAML the user validated.
+description: Plan or initialize a new Java Spring Boot project using Clean Architecture, DDD, and Hexagonal Architecture. Use for initial choices in a reviewable YAML and implementation of its validated scope, not to reinitialize existing applications.
 ---
 
 # Spring Java Bootstrap
@@ -18,6 +18,14 @@ Inspect the repository first. Ask only about unresolved decisions; do not repeat
 5. **Application baseline:** REST, GraphQL, messaging, or combination; validation and API documentation; test framework; formatting/static checks; logging and health checks when in scope.
 
 Recommend simple defaults for optional choices and record them as defaults when the user asked you to proceed autonomously. Do not ask about every Initializr field if a sensible default can be stated. Existing projects retain their conventions; do not overwrite files or restructure unrelated code.
+
+## Scope and Harness guidance
+
+This skill is for initial creation, including continuation of an unfinished initialization. For an already initialized application, use normal development for changes and `configure-workspace-harness` for guidance setup; do not reinitialize it. Preserve existing work.
+
+When working in a Harness workspace, coordinate with `bootstrap-workspace-project` and read [the project guidance contract](../configure-workspace-harness/references/project-guidance.md). Fill thematic documents as choices are validated and implementation progresses. Separate decisions from implementation and preserve manual content. Swagger is the default for new compatible APIs unless the user chooses otherwise. Outside a Harness workspace, do not create a Harness implicitly.
+
+The YAML review may approve only the foundation ready to begin. Leave unrelated choices in `open_questions` and implement the approved scope. Undecided persistence/security must not block independent domain/application work or force a default infrastructure choice. After initialization, the Markdown documents track later decisions; the YAML remains the initial plan.
 
 ## Architecture rules
 

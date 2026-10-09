@@ -1,6 +1,6 @@
 ---
 name: nestjs-backend-bootstrap
-description: Plan or initialize a NestJS backend using Clean Architecture, DDD, and Hexagonal Architecture (Ports & Adapters). Use when defining project choices in a reviewable YAML architecture file, or when implementing infrastructure from a YAML the user has validated.
+description: Plan or initialize a new NestJS backend using Clean Architecture, DDD, and Hexagonal Architecture. Use for initial choices in a reviewable YAML and implementation of its validated scope, not to reinitialize existing applications.
 ---
 
 # NestJS Backend Bootstrap
@@ -19,7 +19,15 @@ Before scaffolding or changing code, inspect the repository and ask the user a c
 
 Use the available user-input mechanism or an equivalent concise interaction. Bundle related questions rather than asking one at a time. If many decisions remain open, ask only what is needed for a sound foundation and record other choices as explicit defaults. Never block on optional details: recommend a simple default, state it, and continue when the user asked you to proceed autonomously.
 
-For an existing repository, inspect files first and ask only about consequential ambiguities. Preserve existing working conventions unless the user requests a change or they conflict with the dependency rules below. Do not overwrite files or restructure unrelated code without need.
+For a partially started initialization, inspect files first and ask only about consequential ambiguities. Preserve existing working conventions and do not overwrite files or restructure unrelated code without need.
+
+## Scope and Harness guidance
+
+This skill is for initial creation, including continuation of an unfinished initialization. For an already initialized application, use normal development for changes and `configure-workspace-harness` for guidance setup; do not reinitialize it. Preserve existing work.
+
+When working in a Harness workspace, coordinate with `bootstrap-workspace-project` and read [the project guidance contract](../configure-workspace-harness/references/project-guidance.md). Fill thematic documents as choices are validated and implementation progresses. Separate decisions from implementation and preserve manual content. Swagger is the default for new compatible APIs unless the user chooses otherwise. Outside a Harness workspace, do not create a Harness implicitly.
+
+The YAML review may approve only the foundation ready to begin. Leave unrelated choices in `open_questions` and implement the approved scope. Undecided persistence/security must not block independent domain/application work or force a default infrastructure choice. After initialization, the Markdown documents track later decisions; the YAML remains the initial plan.
 
 ## Architecture rules
 
@@ -62,7 +70,7 @@ Use aliases for architectural boundaries and stable module imports, not as a rep
 
 1. Inspect the repository and gather answers/defaults from discovery. For an existing project, record its relevant conventions and current state.
 2. Create or update a reviewable `.yaml` file containing the architecture and implementation choices. Use `architecture.yaml` at the project root unless the user names another path. Do not include secrets.
-3. Include the selected runtime and package manager, local-versus-Docker development mode, architecture and folder/naming conventions, path aliases, API and quality baseline, selected integrations, and explicit defaults or unresolved decisions. Represent optional or unselected infrastructure as absent/disabled rather than inventing a choice.
+3. Include the selected runtime and package manager, local-versus-Docker development mode, architecture and folder/naming conventions, path aliases, API and quality baseline, selected integrations, and explicit defaults or unresolved decisions. Omit unselected integrations from implementation and record undecided choices in `open_questions`; distinguish them from choices explicitly disabled by the user.
 4. Ensure the file is valid YAML, then summarize its key decisions and ask the user to validate it. Stop here: do not scaffold, install dependencies, or initialize project infrastructure in this phase.
 
 The YAML should be straightforward to review and edit. Use this shape, omitting sections that do not apply:

@@ -49,3 +49,15 @@ O inicializador é `scripts/harness.mjs`, executado com Node.js sem dependência
 - Codex usa um `AGENTS.md` gerado a partir das duas fontes; Cursor carrega regras MDC compartilhadas e específicas por link.
 - Se o inventário estiver inválido ou um destino de link estiver ocupado, o comando para e preserva os dados existentes.
 - Paths do inventário são relativos e os symlinks também são relativos para manter a estrutura portátil quando o workspace é movido.
+
+## Documentação viva
+
+- Os nove Markdown temáticos ficam diretamente em `projects/<path>/`, independentes da ferramenta. `init` e `add` criam templates uma única vez; `.guidance-initialized` registra a conclusão. Arquivos existentes são preservados e documentos removidos não reaparecem em `init`, `add`, `link` ou `sync` posteriores.
+- Em uma estrutura antiga sem marcador, a primeira execução adiciona somente templates ausentes e grava o marcador. Fontes antigas das ferramentas permanecem preservadas.
+- Fontes comuns e específicas de uma ferramenta são criadas sob demanda em `link`/`sync`, somente para a ferramenta selecionada. `init` não precisa escolher uma ferramenta.
+- Codex recebe regras comuns, específicas e um índice gerado de documentos em seu `AGENTS.md`. Cursor recebe também `harness-documents.mdc`, com `alwaysApply: true`. Ambos contêm instruções de manutenção contínua, inclusive quando fontes comuns antigas ainda não as contêm.
+- O índice lista arquivos regulares `.md` diretamente na pasta do projeto. `sync` atualiza adições, renomeações e remoções sem copiar conteúdo temático. Os caminhos são relativos à raiz da aplicação, não ao arquivo gerado ou ao destino do symlink.
+- Conteúdo temático é preenchido pela IA, não pelo script. Alterações de conteúdo são lidas na fonte; alterações na lista exigem `sync <path>`. Fontes comuns alteradas exigem `sync` para atualizar todas as composições Codex.
+- O YAML é o plano inicial do bootstrap, que pode validar apenas o escopo consolidado. Após a inicialização, os Markdown refletem decisões posteriores sem exigir uma nova execução do bootstrap.
+
+Validação automatizada: `node --test scripts/harness.test.mjs`, usando apenas bibliotecas Node.js e workspaces temporários.
