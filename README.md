@@ -1,6 +1,6 @@
 # Harness Pocket Kit
 
-Kit de skills para manter orientações de agentes e apoiar o início e o desenvolvimento de projetos pessoais ou de pequenos grupos. As skills de bootstrap incluem `angular-frontend-bootstrap`, `nestjs-backend-bootstrap` e `spring-java-bootstrap`.
+Kit de skills para manter orientações de agentes e apoiar o início e o desenvolvimento de projetos pessoais ou de pequenos grupos. As skills de bootstrap incluem `angular-frontend-bootstrap`, `nestjs-backend-bootstrap` e `spring-java-bootstrap`. A skill `harness-feature-planning` planeja features em qualquer projeto usando SDD e documentação em três altitudes.
 
 ## Workspace com vários repositórios
 
