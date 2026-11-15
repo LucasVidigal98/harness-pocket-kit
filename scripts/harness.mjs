@@ -1,19 +1,18 @@
 #!/usr/bin/env node
-import { readdir, lstat, mkdir, readFile, readlink, rename, symlink, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const harnessDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const workspaceDir = path.dirname(harnessDir);
+const monorepoDir = path.dirname(harnessDir);
 const inventoryPath = path.join(harnessDir, 'inventory.json');
-const commonCodexPath = path.join(harnessDir, 'common', 'codex', 'AGENTS.md');
-const commonCursorPath = path.join(harnessDir, 'common', 'cursor', 'rules', 'general.mdc');
-const skillsPath = path.join(harnessDir, '.agents', 'skills');
-const livingGuidance = `Antes de trabalhar, consulte os documentos do Harness pertinentes à tarefa. Conforme o usuário adota decisões e o projeto evolui, atualize os documentos afetados no mesmo trabalho.
-Preserve conteúdo manual válido. Diferencie decisões aprovadas, implementação existente e pendências; ideias em discussão não são decisões. Não invente justificativas nem registre valores de secrets.
-Os documentos temáticos descrevem o estado vigente; decisions.md registra decisões relevantes e seus motivos conhecidos em tópicos curtos, identificando decisões substituídas. Atualize também orientações compartilhadas quando a decisão realmente valer para outros projetos.
-Documentos podem ser adicionados, renomeados ou removidos conforme a necessidade. Após mudar a lista ou as fontes de orientação da ferramenta, execute a sincronização indicada abaixo. Não é necessário executar bootstrap para manter a documentação.
-Quando uma skill em .agents/skills/ corresponder à tarefa, leia seu SKILL.md e siga suas instruções.`;
+const commonGuidancePath = path.join(harnessDir, 'common', 'guidance.md');
+
+const livingGuidance = `Antes de trabalhar, leia harness/inventory.json, identifique os componentes afetados e consulte apenas os documentos pertinentes em harness/common/ e harness/projects/<path>/.
+As orientações específicas do componente prevalecem sobre as gerais quando houver conflito. Não aplique regras de um componente a outro sem evidência de que são compartilhadas.
+Conforme decisões forem adotadas e a implementação evoluir, atualize os documentos afetados no mesmo trabalho. Preserve conteúdo manual válido e diferencie decisões aprovadas, implementação existente e pendências.
+Os documentos temáticos descrevem o estado vigente; decisions.md registra decisões relevantes e seus motivos conhecidos, identificando decisões substituídas. Não invente justificativas nem registre valores de secrets.
+Quando uma skill em harness/.agents/skills/ corresponder à tarefa, leia seu SKILL.md e siga suas instruções.`;
 
 const documents = {
   'architecture.md': ['Arquitetura', 'Organização, camadas, responsabilidades, limites e direção das dependências adotadas.'],
@@ -23,87 +22,146 @@ const documents = {
   'tests.md': ['Testes unitários', 'Ferramentas, organização, execução, mocks/fakes/stubs e cobertura. Testes unitários devem verificar comportamentos sem banco, rede ou infraestrutura externa. Metas de cobertura somente quando definidas.'],
   'api_docs.md': ['Documentação da API', 'Biblioteca, configuração, geração, acesso e convenções para endpoints, DTOs, respostas e erros. Swagger é o padrão para novas APIs compatíveis; preserve a solução existente ou a alternativa escolhida pelo usuário.'],
   'decisions.md': ['Decisões do projeto', 'Registre em tópicos curtos o que foi decidido ou alterado, o motivo quando conhecido e decisões substituídas. Diferencie decisão aprovada de implementação concluída.'],
-  'business_rules.md': ['Regras de negócio', 'Condições, restrições, cálculos e comportamentos vigentes, agrupados por área do domínio; exemplos quando úteis.'],
+  'business_rules.md': ['Regras de negócio', 'Condições, restrições, cálculos e comportamentos vigentes, agrupados por área do domínio com exemplos quando úteis.'],
   'security.md': ['Segurança', 'Autenticação, autorização, API keys e mecanismos de acesso adotados. Referencie credenciais sem registrar valores. Escolhas futuras podem permanecer pendentes.'],
 };
 
-const templates = [
-  [commonCodexPath, `# Regras gerais do workspace\n\n${livingGuidance}\n`],
-  [commonCursorPath, `---\ndescription: Regras gerais compartilhadas pelo workspace\nalwaysApply: true\n---\n\n${livingGuidance}\n`],
+const entryPointBody = `# Harness
+
+Este monorepo usa orientações centralizadas em \`harness/\`.
+
+Antes de trabalhar:
+
+1. Leia \`harness/inventory.json\` e identifique os componentes afetados pela tarefa.
+2. Leia \`harness/common/guidance.md\`.
+3. Leia os documentos pertinentes em \`harness/projects/<caminho-do-componente>/\` para cada componente afetado.
+4. Quando uma skill em \`harness/.agents/skills/\` corresponder à tarefa, leia o respectivo \`SKILL.md\` e siga suas instruções.
+
+As orientações específicas prevalecem sobre as gerais. Mantenha a documentação viva conforme decisões e implementação mudarem.
+`;
+
+const entryPoints = [
+  [path.join(monorepoDir, 'AGENTS.md'), entryPointBody],
+  [path.join(monorepoDir, 'CLAUDE.md'), entryPointBody],
+  [path.join(monorepoDir, '.cursor', 'rules', 'harness.mdc'), `---\ndescription: Encaminha o agente para as orientações centrais do Harness\nalwaysApply: true\n---\n\n${entryPointBody}`],
 ];
 
 function usage() {
-  console.log(`Uso:\n  node harness/scripts/harness.mjs init\n  node harness/scripts/harness.mjs add <caminho-relativo>\n  node harness/scripts/harness.mjs sync [caminho-relativo]\n  node harness/scripts/harness.mjs link <caminho-relativo> [codex|cursor]`);
+  console.log(`Uso:\n  node harness/scripts/harness.mjs init\n  node harness/scripts/harness.mjs add <caminho-relativo>\n  node harness/scripts/harness.mjs check [caminho-relativo]`);
 }
 
-function relativeRepoPath(value) {
+function relativeProjectPath(value) {
   const normalized = value.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
   const parts = normalized.split('/');
-  if (!normalized || path.posix.isAbsolute(normalized) || /^[a-z]:/i.test(normalized) || parts.some((part) => !part || part === '.' || part === '..') || parts[0] === 'harness') {
-    throw new Error(`Caminho de repositório inválido: ${value}`);
+  if (!normalized || path.posix.isAbsolute(normalized) || /^[a-z]:/i.test(normalized) || parts.some((part) => !part || part === '.' || part === '..') || parts[0] === 'harness' || parts[0] === '.git') {
+    throw new Error(`Caminho de componente inválido: ${value}`);
   }
   return normalized;
 }
 
-function projectDir(repoPath) {
-  return path.join(harnessDir, 'projects', ...repoPath.split('/'));
+function projectGuidanceDir(projectPath) {
+  return path.join(harnessDir, 'projects', ...projectPath.split('/'));
 }
 
-function repoDir(repoPath) {
-  return path.join(workspaceDir, ...repoPath.split('/'));
+function projectCodeDir(projectPath) {
+  return path.join(monorepoDir, ...projectPath.split('/'));
+}
+
+function componentEntryPoint(projectPath) {
+  const componentDir = projectCodeDir(projectPath);
+  const relativeHarness = path.relative(componentDir, harnessDir).split(path.sep).join('/');
+  return `# Harness
+
+Este componente pertence ao monorepo e usa as orientações centralizadas em \`${relativeHarness}/\`.
+
+Antes de trabalhar:
+
+1. Leia \`${relativeHarness}/inventory.json\` e \`${relativeHarness}/common/guidance.md\`.
+2. Leia os documentos pertinentes em \`${relativeHarness}/projects/${projectPath}/\`.
+3. Quando uma skill em \`${relativeHarness}/.agents/skills/\` corresponder à tarefa, leia seu \`SKILL.md\` e siga suas instruções.
+
+As orientações específicas deste componente prevalecem sobre as gerais. Atualize a documentação viva quando decisões ou implementação mudarem.
+`;
+}
+
+async function statOrNull(filePath) {
+  try {
+    return await lstat(filePath);
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
 }
 
 async function exists(filePath) {
-  try {
-    await lstat(filePath);
-    return true;
-  } catch (error) {
-    if (error.code === 'ENOENT') return false;
-    throw error;
-  }
+  return Boolean(await statOrNull(filePath));
 }
 
-async function ensureHarnessDirectory(directory) {
-  const relative = path.relative(harnessDir, directory);
+async function ensureRealDirectory(root, directory, label) {
+  const relative = path.relative(root, directory);
   if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-    throw new Error(`Caminho fora de harness: ${directory}`);
+    throw new Error(`Caminho fora de ${label}: ${directory}`);
   }
-  let current = harnessDir;
+  const rootStat = await statOrNull(root);
+  if (!rootStat || !rootStat.isDirectory() || rootStat.isSymbolicLink()) {
+    throw new Error(`${label} precisa ser um diretório real: ${root}`);
+  }
+  let current = root;
   for (const part of relative ? relative.split(path.sep) : []) {
-    const stat = await lstat(current).catch((error) => {
-      if (error.code === 'ENOENT') return null;
-      throw error;
-    });
+    current = path.join(current, part);
+    const stat = await statOrNull(current);
     if (stat && (!stat.isDirectory() || stat.isSymbolicLink())) {
-      throw new Error(`Diretório de harness não pode ser um link nem um arquivo: ${current}`);
+      throw new Error(`Diretório não pode ser link nem arquivo: ${current}`);
     }
     if (!stat) await mkdir(current);
-    current = path.join(current, part);
   }
-  const finalStat = await lstat(current).catch((error) => {
-    if (error.code === 'ENOENT') return null;
-    throw error;
-  });
-  if (finalStat && (!finalStat.isDirectory() || finalStat.isSymbolicLink())) {
-    throw new Error(`Diretório de harness não pode ser um link nem um arquivo: ${current}`);
-  }
-  if (!finalStat) await mkdir(current);
 }
 
-async function writeIfMissing(filePath, content) {
+async function writeHarnessFileIfMissing(filePath, content) {
   if (await exists(filePath)) return false;
-  await ensureHarnessDirectory(path.dirname(filePath));
+  await ensureRealDirectory(harnessDir, path.dirname(filePath), 'harness');
   await writeFile(filePath, content, { flag: 'wx' });
   return true;
 }
 
-function projectTemplates(repoPath, tool) {
-  const name = path.posix.basename(repoPath);
-  const base = projectDir(repoPath);
-  return [
-    [path.join(base, 'codex', 'project.md'), `# Orientações específicas: ${name}\n\nDescreva aqui o propósito, os limites e as convenções deste repositório.\n`],
-    [path.join(base, 'cursor', 'project.mdc'), `---\ndescription: Orientações específicas do repositório ${name}\nalwaysApply: true\n---\n\nDescreva aqui o propósito, os limites e as convenções deste repositório.\n`],
-  ].filter(([filePath]) => path.basename(path.dirname(filePath)) === tool);
+async function writeEntryPointIfMissing(filePath, content) {
+  if (await exists(filePath)) {
+    const stat = await lstat(filePath);
+    if (!stat.isFile() || stat.isSymbolicLink()) {
+      console.warn(`Atenção: ponto de entrada ocupado e preservado: ${filePath}`);
+      return false;
+    }
+    const current = await readFile(filePath, 'utf8');
+    if (!current.includes('harness/')) {
+      console.warn(`Atenção: integre manualmente as instruções do Harness no arquivo existente: ${filePath}`);
+    }
+    return false;
+  }
+  await ensureRealDirectory(monorepoDir, path.dirname(filePath), 'monorepo');
+  await writeFile(filePath, content, { flag: 'wx' });
+  return true;
+}
+
+async function assertMonorepoRoot() {
+  if (path.basename(harnessDir) !== 'harness') {
+    throw new Error('Copie este kit para a pasta harness na raiz do monorepo antes de executar o inicializador.');
+  }
+  const gitEntry = await statOrNull(path.join(monorepoDir, '.git'));
+  if (!gitEntry || gitEntry.isSymbolicLink() || (!gitEntry.isDirectory() && !gitEntry.isFile())) {
+    throw new Error('A pasta que contém harness precisa ser a raiz de um único repositório Git.');
+  }
+}
+
+function validateProjects(projects) {
+  if (!Array.isArray(projects)) throw new Error('Inventário inválido: projects precisa ser uma lista.');
+  const seen = new Set();
+  for (const project of projects) {
+    if (!project || typeof project.path !== 'string' || relativeProjectPath(project.path) !== project.path) {
+      throw new Error('Inventário inválido: cada componente precisa de um path relativo válido.');
+    }
+    if (seen.has(project.path)) throw new Error(`Inventário contém caminho duplicado: ${project.path}`);
+    seen.add(project.path);
+  }
 }
 
 async function loadInventory() {
@@ -113,271 +171,147 @@ async function loadInventory() {
     if (!info.isFile() || info.isSymbolicLink()) throw new Error('O inventário precisa ser um arquivo regular, não um link.');
     inventory = JSON.parse(await readFile(inventoryPath, 'utf8'));
   } catch (error) {
-    if (error.code === 'ENOENT') return { version: 1, repositories: [] };
+    if (error.code === 'ENOENT') return { inventory: { version: 2, projects: [] }, existed: false, migrated: false };
     throw new Error(`Não foi possível ler ${inventoryPath}: ${error.message}`);
   }
-  if (inventory?.version !== 1 || !Array.isArray(inventory.repositories)) {
-    throw new Error('Inventário inválido. Esperado { "version": 1, "repositories": [...] }.');
+  if (inventory?.version === 1 && Array.isArray(inventory.repositories)) {
+    const projects = inventory.repositories.map((repository) => ({ path: relativeProjectPath(repository.path) }));
+    validateProjects(projects);
+    return { inventory: { version: 2, projects }, existed: true, migrated: true };
   }
-
-  const seen = new Set();
-  for (const repo of inventory.repositories) {
-    if (!repo || typeof repo.path !== 'string' || relativeRepoPath(repo.path) !== repo.path || (repo.tool !== null && repo.tool !== 'codex' && repo.tool !== 'cursor')) {
-      throw new Error('Inventário inválido: cada repositório precisa de um path relativo e tool null, codex ou cursor.');
-    }
-    if (seen.has(repo.path)) throw new Error(`Inventário contém caminho duplicado: ${repo.path}`);
-    seen.add(repo.path);
+  if (inventory?.version !== 2) {
+    throw new Error('Inventário inválido. Esperado { "version": 2, "projects": [...] }.');
   }
-  return inventory;
+  validateProjects(inventory.projects);
+  return { inventory, existed: true, migrated: false };
 }
 
 async function saveInventory(inventory) {
-  await ensureHarnessDirectory(harnessDir);
-  const temporaryPath = `${inventoryPath}.tmp`;
+  await ensureRealDirectory(harnessDir, harnessDir, 'harness');
+  const temporaryPath = `${inventoryPath}.${process.pid}.tmp`;
   await writeFile(temporaryPath, `${JSON.stringify(inventory, null, 2)}\n`, { flag: 'wx' });
   await rename(temporaryPath, inventoryPath);
 }
 
-async function scaffoldProject(repoPath) {
-  const base = projectDir(repoPath);
+async function assertSafeProject(projectPath) {
+  let current = monorepoDir;
+  for (const part of projectPath.split('/')) {
+    current = path.join(current, part);
+    const stat = await statOrNull(current);
+    if (!stat) throw new Error(`Caminho do componente não existe: ${projectPath}`);
+    if (!stat.isDirectory() || stat.isSymbolicLink()) {
+      throw new Error(`O caminho do componente precisa usar diretórios reais dentro do monorepo: ${projectPath}`);
+    }
+  }
+}
+
+async function scaffoldProject(projectPath) {
+  const base = projectGuidanceDir(projectPath);
   const marker = path.join(base, '.guidance-initialized');
-  await ensureHarnessDirectory(base);
+  await ensureRealDirectory(harnessDir, base, 'harness');
   if (await exists(marker)) return;
   for (const [filename, [title, description]] of Object.entries(documents)) {
-    await writeIfMissing(path.join(base, filename), `# ${title}\n\n${description}\n\n## Definições\n\nA preencher com decisões consolidadas e o estado real do projeto.\n\n## Pendências\n\nAinda não avaliado. Indique o que falta definir ou se o assunto não se aplica.\n`);
+    await writeHarnessFileIfMissing(path.join(base, filename), `# ${title}\n\n${description}\n\n## Definições\n\nA preencher com decisões consolidadas e o estado real deste componente.\n\n## Pendências\n\nAinda não avaliado. Indique o que falta definir ou se o assunto não se aplica.\n`);
   }
-  await writeIfMissing(marker, 'Templates iniciais criados. Não remover: documentos ausentes não devem ser recriados automaticamente.\n');
+  await writeHarnessFileIfMissing(marker, 'Templates iniciais criados. Não remover: documentos ausentes não devem ser recriados automaticamente.\n');
 }
 
-async function addRepository(inventory, inputPath) {
-  const repoPath = relativeRepoPath(inputPath);
-  const directory = repoDir(repoPath);
-  if (!(await exists(directory)) || !(await lstat(directory)).isDirectory()) {
-    throw new Error(`Diretório do repositório não encontrado: ${directory}`);
-  }
-  const repoStat = await lstat(directory);
-  if (repoStat.isSymbolicLink()) throw new Error(`Não adiciono diretórios que sejam links simbólicos: ${directory}`);
-  await assertSafeRepo(repoPath);
-  let repo = inventory.repositories.find((item) => item.path === repoPath);
-  if (!repo) {
-    repo = { path: repoPath, tool: null };
-    inventory.repositories.push(repo);
-  }
-  await scaffoldProject(repoPath);
-  return repo;
+async function ensureComponentEntryPoint(projectPath) {
+  await assertSafeProject(projectPath);
+  return writeEntryPointIfMissing(path.join(projectCodeDir(projectPath), 'AGENTS.md'), componentEntryPoint(projectPath));
 }
 
-async function ensureTemplateFiles(tool) {
-  for (const [filePath, content] of templates) {
-    if (filePath === (tool === 'codex' ? commonCodexPath : commonCursorPath)) await writeIfMissing(filePath, content);
-  }
+async function ensureSharedSources() {
+  await writeHarnessFileIfMissing(commonGuidancePath, `# Orientações gerais do monorepo\n\n${livingGuidance}\n`);
+  for (const [filePath, content] of entryPoints) await writeEntryPointIfMissing(filePath, content);
 }
 
 async function init() {
-  await mkdir(harnessDir, { recursive: true });
-  const inventoryExisted = await exists(inventoryPath);
-  const inventory = await loadInventory();
-  if (!inventoryExisted) {
-    const entries = await readdir(workspaceDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isDirectory() || entry.name === path.basename(harnessDir)) continue;
-      const candidate = path.join(workspaceDir, entry.name);
-      if (await exists(path.join(candidate, '.git'))) {
-        await addRepository(inventory, entry.name);
-      }
+  const { inventory, existed, migrated } = await loadInventory();
+  await ensureSharedSources();
+  for (const project of inventory.projects) {
+    await scaffoldProject(project.path);
+    try {
+      await ensureComponentEntryPoint(project.path);
+    } catch (error) {
+      console.warn(`Atenção: não foi possível preparar ${project.path}/AGENTS.md: ${error.message}`);
     }
-    await saveInventory(inventory);
-    console.log(`Inventário criado com ${inventory.repositories.length} repositório(s).`);
-  } else {
-    for (const repo of inventory.repositories) await scaffoldProject(repo.path);
-    console.log('Inventário existente preservado. Use "add" para registrar repositórios novos.');
   }
+  if (!existed || migrated) await saveInventory(inventory);
+  if (!existed) console.log('Inventário criado sem componentes. Use "add <caminho-relativo>" para registrá-los.');
+  else if (migrated) console.log('Inventário migrado da versão 1 para a versão 2. Ferramentas agora são configuradas na raiz do monorepo.');
+  else console.log('Inventário existente preservado.');
   console.log(`Inventário: ${inventoryPath}`);
 }
 
 async function add(inputPath) {
-  const inventory = await loadInventory();
-  const repo = await addRepository(inventory, inputPath);
+  const projectPath = relativeProjectPath(inputPath);
+  await assertSafeProject(projectPath);
+  const { inventory, migrated } = await loadInventory();
+  let project = inventory.projects.find((item) => item.path === projectPath);
+  if (!project) {
+    project = { path: projectPath };
+    inventory.projects.push(project);
+  }
+  await ensureSharedSources();
+  await scaffoldProject(projectPath);
+  await ensureComponentEntryPoint(projectPath);
   await saveInventory(inventory);
-  console.log(`Repositório registrado: ${repo.path}`);
+  if (migrated) console.log('Inventário migrado para a versão 2.');
+  console.log(`Componente registrado: ${project.path}`);
 }
 
-async function assertSafeRepo(repoPath) {
-  let current = workspaceDir;
-  for (const part of repoPath.split('/')) {
-    current = path.join(current, part);
-    const stat = await lstat(current).catch((error) => {
-      if (error.code === 'ENOENT') throw new Error(`Caminho do inventário não existe: ${repoPath}`);
-      throw error;
-    });
-    if (!stat.isDirectory() || stat.isSymbolicLink()) {
-      throw new Error(`O caminho do repositório precisa usar diretórios reais dentro do workspace: ${repoPath}`);
-    }
-  }
+async function checkEntryPoint(filePath) {
+  const stat = await statOrNull(filePath);
+  if (!stat || !stat.isFile() || stat.isSymbolicLink()) return `Ponto de entrada ausente ou inválido: ${filePath}`;
+  const content = await readFile(filePath, 'utf8');
+  if (!content.includes('harness/')) return `Ponto de entrada não encaminha para harness/: ${filePath}`;
+  return null;
 }
 
-async function documentGuide(repoPath) {
-  const base = projectDir(repoPath);
-  const relativeBase = path.relative(repoDir(repoPath), base).split(path.sep).join('/');
-  const entries = await readdir(base, { withFileTypes: true });
-  const names = entries.filter((entry) => entry.isFile() && entry.name.endsWith('.md')).map((entry) => entry.name).sort();
-  const script = path.relative(repoDir(repoPath), path.join(harnessDir, 'scripts', 'harness.mjs')).split(path.sep).join('/');
-  return `# Documentação viva do projeto\n\n${livingGuidance}\n\nTodos os caminhos abaixo são relativos à raiz do repositório da aplicação, não ao arquivo de regras nem ao destino do symlink. As fontes ficam em ${JSON.stringify(relativeBase)}.\n\n${names.map((name) => `- ${JSON.stringify(`${relativeBase}/${name}`)}`).join('\n') || 'Nenhum documento temático presente.'}\n\nSincronização a partir da raiz do repositório: node ${JSON.stringify(script)} sync ${JSON.stringify(repoPath)}\n`;
-}
-
-async function writeGenerated(output, content) {
-  if (await exists(output)) {
-    const stat = await lstat(output);
-    if (!stat.isFile() || stat.isSymbolicLink()) throw new Error(`Arquivo de saída inválido; preservado: ${output}`);
-    const existing = await readFile(output, 'utf8');
-    if (!existing.includes('<!-- Gerado por harness/scripts/harness.mjs;')) throw new Error(`Arquivo de saída não gerado pelo harness; preservado: ${output}`);
-    if (existing === content) return;
-    const temporaryPath = `${output}.tmp`;
-    await writeFile(temporaryPath, content, { flag: 'wx' });
-    await rename(temporaryPath, output);
-  } else {
-    await writeIfMissing(output, content);
-  }
-}
-
-async function ensureFileLink(target, linkPath) {
-  if (await exists(linkPath)) {
-    const info = await lstat(linkPath);
-    if (!info.isSymbolicLink()) throw new Error(`Destino ocupado; preservado sem alteração: ${linkPath}`);
-    const current = await readlink(linkPath);
-    if (path.resolve(path.dirname(linkPath), current) !== path.resolve(target)) {
-      throw new Error(`Link existente aponta para outro destino; preservado: ${linkPath}`);
-    }
-    return;
-  }
-  const relativeTarget = path.relative(path.dirname(linkPath), target);
-  await symlink(relativeTarget, linkPath, 'file');
-}
-
-async function ensureDirectoryLink(target, linkPath) {
-  if (await exists(linkPath)) {
-    const info = await lstat(linkPath);
-    if (!info.isSymbolicLink()) throw new Error(`Destino ocupado; preservado sem alteração: ${linkPath}`);
-    const current = await readlink(linkPath);
-    if (path.resolve(path.dirname(linkPath), current) !== path.resolve(target)) {
-      throw new Error(`Link existente aponta para outro destino; preservado: ${linkPath}`);
-    }
-    return;
-  }
-  const relativeTarget = path.relative(path.dirname(linkPath), target);
-  await symlink(relativeTarget, linkPath, 'dir');
-}
-
-async function linkSkills(repoPath) {
-  const agentsDir = path.join(repoDir(repoPath), '.agents');
-  const targetSkillsDir = path.join(agentsDir, 'skills');
-  if (await exists(agentsDir)) {
-    const info = await lstat(agentsDir);
-    if (!info.isDirectory() || info.isSymbolicLink()) throw new Error(`Destino de skills ocupado; preservado: ${agentsDir}`);
-  }
-  if (await exists(targetSkillsDir)) {
-    const info = await lstat(targetSkillsDir);
-    if (info.isSymbolicLink()) {
-      const current = await readlink(targetSkillsDir);
-      if (path.resolve(path.dirname(targetSkillsDir), current) === path.resolve(skillsPath)) return;
-      throw new Error(`Diretório de skills aponta para outro destino; preservado: ${targetSkillsDir}`);
-    }
-    if (!info.isDirectory()) throw new Error(`Destino de skills ocupado; preservado: ${targetSkillsDir}`);
-  } else {
-    await mkdir(targetSkillsDir, { recursive: true });
-  }
-
-  const skills = await readdir(skillsPath, { withFileTypes: true });
-  for (const skill of skills) {
-    if (skill.isDirectory()) await ensureDirectoryLink(path.join(skillsPath, skill.name), path.join(targetSkillsDir, skill.name));
-  }
-}
-
-async function syncProject(repoPath, tool) {
-  await assertSafeRepo(repoPath);
-  const base = projectDir(repoPath);
-  await scaffoldProject(repoPath);
-  await ensureTemplateFiles(tool);
-  for (const [filePath, content] of projectTemplates(repoPath, tool)) await writeIfMissing(filePath, content);
-  const guide = await documentGuide(repoPath);
-  const generatedNotice = '<!-- Gerado por harness/scripts/harness.mjs; edite as fontes em common/ e projects/<path>/. -->';
-  if (tool === 'codex') {
-    const common = await readFile(commonCodexPath, 'utf8');
-    const specific = await readFile(path.join(base, 'codex', 'project.md'), 'utf8');
-    const output = path.join(base, 'codex', 'AGENTS.md');
-    await writeGenerated(output, `${generatedNotice}\n${common.trim()}\n\n${specific.trim()}\n\n${guide}`);
-  }
-
-  if (tool === 'cursor') {
-    const cursorRulesDir = path.join(base, '.cursor', 'rules');
-    await ensureHarnessDirectory(cursorRulesDir);
-    const generalRule = path.join(cursorRulesDir, 'harness-general.mdc');
-    const projectRule = path.join(cursorRulesDir, 'harness-project.mdc');
-    await ensureFileLink(commonCursorPath, generalRule);
-    await ensureFileLink(path.join(base, 'cursor', 'project.mdc'), projectRule);
-    await writeGenerated(path.join(cursorRulesDir, 'harness-documents.mdc'), `---\ndescription: Documentação viva do projeto\nalwaysApply: true\n---\n${generatedNotice}\n${guide}`);
-  }
-}
-
-async function sync(inputPath) {
-  const inventory = await loadInventory();
-  const selected = inputPath ? [relativeRepoPath(inputPath)] : inventory.repositories.filter((repo) => repo.tool).map((repo) => repo.path);
+async function check(inputPath) {
+  const { inventory, migrated } = await loadInventory();
+  if (migrated) throw new Error('Execute "init" para migrar o inventário para a versão 2 antes da validação.');
+  const selected = inputPath ? [relativeProjectPath(inputPath)] : inventory.projects.map((project) => project.path);
   const failures = [];
-  for (const repoPath of selected) {
-    const repo = inventory.repositories.find((item) => item.path === repoPath);
-    if (!repo) throw new Error(`Repositório não encontrado no inventário: ${repoPath}`);
-    if (repo.tool !== 'codex' && repo.tool !== 'cursor') throw new Error(`Escolha a ferramenta antes de sincronizar: ${repoPath}`);
+  if (!(await exists(commonGuidancePath))) failures.push(`Orientação geral ausente: ${commonGuidancePath}`);
+  for (const [filePath] of entryPoints) {
+    const failure = await checkEntryPoint(filePath);
+    if (failure) failures.push(failure);
+  }
+  for (const projectPath of selected) {
+    if (!inventory.projects.some((project) => project.path === projectPath)) {
+      failures.push(`Componente não encontrado no inventário: ${projectPath}`);
+      continue;
+    }
     try {
-      await syncProject(repoPath, repo.tool);
-      console.log(`Orientações sincronizadas: ${repoPath}`);
+      await assertSafeProject(projectPath);
+      const entryPointFailure = await checkEntryPoint(path.join(projectCodeDir(projectPath), 'AGENTS.md'));
+      if (entryPointFailure) failures.push(entryPointFailure);
+      const entries = await readdir(projectGuidanceDir(projectPath), { withFileTypes: true });
+      if (!entries.some((entry) => entry.isFile() && entry.name.endsWith('.md'))) {
+        failures.push(`Nenhum documento temático encontrado para: ${projectPath}`);
+      }
     } catch (error) {
-      failures.push(`${repoPath}: ${error.message}`);
+      failures.push(`${projectPath}: ${error.message}`);
     }
   }
-  if (failures.length) throw new Error(`Alguns repositórios não foram sincronizados:\n${failures.join('\n')}`);
-}
-
-async function link(inputPath, selectedTool) {
-  const inventory = await loadInventory();
-  const repoPath = relativeRepoPath(inputPath);
-  const repo = inventory.repositories.find((item) => item.path === repoPath);
-  if (!repo) throw new Error(`Repositório não encontrado no inventário: ${repoPath}`);
-  const tool = selectedTool || repo.tool;
-  if (tool !== 'codex' && tool !== 'cursor') throw new Error('Defina a ferramenta informando codex ou cursor.');
-  await syncProject(repoPath, tool);
-  const target = tool === 'codex'
-    ? path.join(projectDir(repoPath), 'codex', 'AGENTS.md')
-    : path.join(projectDir(repoPath), '.cursor');
-  const destination = tool === 'codex'
-    ? path.join(repoDir(repoPath), 'AGENTS.md')
-    : path.join(repoDir(repoPath), '.cursor');
-
-  if (tool === 'codex') await ensureFileLink(target, destination);
-  else await ensureDirectoryLink(target, destination);
-  await linkSkills(repoPath);
-  repo.tool = tool;
-  await saveInventory(inventory);
-  console.log(`Link ${tool} pronto: ${repoPath}`);
+  if (failures.length) throw new Error(`Validação encontrou problemas:\n${failures.join('\n')}`);
+  console.log(`Harness válido para ${selected.length} componente(s).`);
 }
 
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   if (!command || command === '--help' || command === '-h') return usage();
-  if (path.basename(harnessDir) !== 'harness') {
-    throw new Error('Copie este kit para a pasta workspace/harness antes de executar o inicializador.');
-  }
+  await assertMonorepoRoot();
   if (command === 'init' && args.length === 0) return init();
   if (command === 'add' && args.length === 1) return add(args[0]);
-  if (command === 'sync' && args.length <= 1) return sync(args[0]);
-  if (command === 'link' && (args.length === 1 || args.length === 2)) return link(args[0], args[1]);
+  if (command === 'check' && args.length <= 1) return check(args[0]);
   usage();
   process.exitCode = 2;
 }
 
 main().catch((error) => {
   console.error(`Erro: ${error.message}`);
-  if (error.code === 'EPERM' || error.code === 'EACCES') {
-    console.error('No Windows, habilite Developer Mode ou execute em um terminal com permissão para criar symlinks.');
-  }
   process.exitCode = 1;
 });

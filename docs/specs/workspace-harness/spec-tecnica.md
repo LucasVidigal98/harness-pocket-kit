@@ -1,63 +1,73 @@
-# Especificação técnica: Harness para workspace
+# Especificação técnica: Harness para monorepo
 
 ## Estrutura conceitual
 
 ```text
-workspace/
+monorepo/
+├── .git/
+├── AGENTS.md
+├── CLAUDE.md
+├── .cursor/rules/harness.mdc
 ├── harness/
-│   ├── inventory.json         # caminhos relativos e ferramenta escolhida
-│   ├── scripts/harness.mjs    # inicialização, sincronização e links
-│   ├── common/                # orientações gerais por ferramenta
-│   └── projects/<repo-path>/  # orientações específicas por repositório
-├── backend/                   # apenas código e links para orientações
-└── frontend/
+│   ├── inventory.json
+│   ├── common/guidance.md
+│   ├── projects/<component-path>/
+│   ├── .agents/skills/
+│   └── scripts/harness.mjs
+├── apps/web/
+│   └── AGENTS.md
+└── services/api/
+    └── AGENTS.md
 ```
 
-Os nomes `backend` e `frontend` são exemplos. O caminho relativo completo é a identidade do repositório, permitindo nomes de diretório repetidos em subpastas. O nome é derivado do último segmento do caminho.
+Os nomes são exemplos. O caminho relativo completo identifica o componente. Todos os arquivos pertencem ao mesmo Git.
 
-O inventário usa JSON:
+## Inventário
 
 ```json
 {
-  "version": 1,
-  "repositories": [
-    { "path": "backend", "tool": "codex" }
+  "version": 2,
+  "projects": [
+    { "path": "apps/web" },
+    { "path": "services/api" }
   ]
 }
 ```
 
-`tool` aceita `codex`, `cursor` ou `null` enquanto não houver escolha. Caminhos são relativos, usam `/` e não podem conter `.` ou `..` como segmentos.
+Os caminhos usam `/`, são relativos à raiz e não admitem segmentos vazios, `.` ou `..`. `harness` e `.git` não podem ser o primeiro segmento. Diretórios symlink no caminho são rejeitados.
 
-## Configuração
+## Pontos de entrada
 
-- O comando de configuração é orientado por uma skill do harness. `init` descobre somente repositórios Git que são filhos diretos do workspace na primeira execução; repositórios aninhados ou sem Git são registrados com `add <path>`. Nas seguintes, o inventário existente é a lista controlada.
-- A configuração pode criar ou editar tanto as orientações gerais da ferramenta quanto as específicas de cada repositório.
-- A ferramenta é detectada pela estrutura existente do repositório quando possível; caso contrário, o agente pergunta ao usuário.
-- Para Codex, o script gera `harness/projects/<path>/codex/AGENTS.md` combinando a orientação geral e a específica; `<repo>/AGENTS.md` é um symlink relativo para esse arquivo. Depois de editar fontes comuns ou específicas, a skill executa `sync` para atualizar a composição.
-- Para Cursor, `<repo>/.cursor` é um symlink relativo para a pasta de regras montada em `harness/projects/<path>/.cursor/rules/`. As regras gerais e específicas dentro dela são symlinks para seus arquivos fonte.
-- As skills de `harness/.agents/skills/<skill>` são ligadas individualmente em `<repo>/.agents/skills/<skill>`, preservando skills locais existentes. Isso mantém as skills disponíveis ao trabalhar no repositório sem copiar seus arquivos.
-- O script cria apenas destinos ausentes ou links que já apontam ao destino esperado. Arquivos, diretórios e links diferentes nos destinos causam erro sem substituição. Caminhos de repositório que atravessam diretórios symlink são rejeitados.
-- A remoção de um projeto do inventário não executa limpeza. A pessoa decide manualmente se remove os links do repositório.
+`init` cria, somente quando ausentes:
+
+- `AGENTS.md` para Codex;
+- `CLAUDE.md` para Claude;
+- `.cursor/rules/harness.mdc` para Cursor.
+
+Eles instruem o agente a ler `inventory.json`, `common/guidance.md`, os documentos dos componentes afetados e skills correspondentes em `harness/.agents/skills/`. Se um destino já existir, o script o preserva e avisa quando não encontra referência a `harness/`.
+
+`add` cria também `<component-path>/AGENTS.md` como arquivo regular. Seu conteúdo usa caminhos relativos calculados a partir da profundidade do componente e encaminha o Codex diretamente à orientação geral, à documentação específica e às skills. `init` garante esse arquivo para componentes já registrados. Arquivos existentes são preservados e precisam mencionar `harness/` para que `check` seja aprovado.
+
+Os pontos de entrada não incorporam nem geram cópias das fontes. Por isso, edições de conteúdo, adições, renomeações e remoções são percebidas diretamente.
 
 ## Inicializador
 
-O inicializador é `scripts/harness.mjs`, executado com Node.js sem dependências. Comandos: `init`, `add <path>`, `sync [path]` e `link <path> [codex|cursor]`. `init` cria fontes e inventário sem substituir arquivos existentes. `sync` atualiza somente os repositórios com ferramenta escolhida; se um path está ausente, ele informa o erro e continua com os demais. No Windows, criação de symlink pode exigir Developer Mode ou privilégio equivalente; não há fallback que copie arquivos.
+`scripts/harness.mjs` não tem dependências e oferece:
 
-## Decisões adotadas
+- `init`: valida a raiz Git, cria fontes compartilhadas e pontos de entrada ausentes, inicializa ou migra o inventário e garante os templates registrados;
+- `add <path>`: valida e registra explicitamente um componente existente, criando seus templates e `AGENTS.md` uma vez;
+- `check [path]`: valida fontes, pontos de entrada, componentes e documentação temática.
 
-- A descoberta inicial é limitada aos repositórios Git em pastas filhas diretas do workspace. O usuário pode adicionar outros caminhos explicitamente.
-- Codex usa um `AGENTS.md` gerado a partir das duas fontes; Cursor carrega regras MDC compartilhadas e específicas por link.
-- Se o inventário estiver inválido ou um destino de link estiver ocupado, o comando para e preserva os dados existentes.
-- Paths do inventário são relativos e os symlinks também são relativos para manter a estrutura portátil quando o workspace é movido.
+Não existem `link` ou `sync`. O script não procura `.git` em componentes nem infere diretórios de código.
+
+## Migração da versão 1
+
+`init` converte cada item de `repositories` em `{ "path": ... }` dentro de `projects` e descarta o campo `tool`. Fontes específicas por ferramenta, arquivos gerados e symlinks existentes não são apagados. Eles ficam disponíveis para revisão e remoção manual após a migração.
 
 ## Documentação viva
 
-- Os nove Markdown temáticos ficam diretamente em `projects/<path>/`, independentes da ferramenta. `init` e `add` criam templates uma única vez; `.guidance-initialized` registra a conclusão. Arquivos existentes são preservados e documentos removidos não reaparecem em `init`, `add`, `link` ou `sync` posteriores.
-- Em uma estrutura antiga sem marcador, a primeira execução adiciona somente templates ausentes e grava o marcador. Fontes antigas das ferramentas permanecem preservadas.
-- Fontes comuns e específicas de uma ferramenta são criadas sob demanda em `link`/`sync`, somente para a ferramenta selecionada. `init` não precisa escolher uma ferramenta.
-- Codex recebe regras comuns, específicas e um índice gerado de documentos em seu `AGENTS.md`. Cursor recebe também `harness-documents.mdc`, com `alwaysApply: true`. Ambos contêm instruções de manutenção contínua, inclusive quando fontes comuns antigas ainda não as contêm.
-- O índice lista arquivos regulares `.md` diretamente na pasta do projeto. `sync` atualiza adições, renomeações e remoções sem copiar conteúdo temático. Os caminhos são relativos à raiz da aplicação, não ao arquivo gerado ou ao destino do symlink.
-- Conteúdo temático é preenchido pela IA, não pelo script. Alterações de conteúdo são lidas na fonte; alterações na lista exigem `sync <path>`. Fontes comuns alteradas exigem `sync` para atualizar todas as composições Codex.
-- O YAML é o plano inicial do bootstrap, que pode validar apenas o escopo consolidado. Após a inicialização, os Markdown refletem decisões posteriores sem exigir uma nova execução do bootstrap.
+Os nove Markdown temáticos ficam em `harness/projects/<path>/`. `.guidance-initialized` registra a criação inicial para que documentos removidos não reapareçam. Conteúdo é preenchido pela IA, não pelo script.
 
-Validação automatizada: `node --test scripts/harness.test.mjs`, usando apenas bibliotecas Node.js e workspaces temporários.
+O agente carrega somente orientações pertinentes à tarefa, aplica precedência específica sobre geral, preserva conteúdo manual e distingue estado vigente, decisões e pendências. O YAML de bootstrap é apenas o plano inicial.
+
+Validação automatizada: `node --test scripts/harness.test.mjs` com monorepos temporários.

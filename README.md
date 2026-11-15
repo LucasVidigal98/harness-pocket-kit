@@ -1,28 +1,45 @@
 # Harness Pocket Kit
 
-Kit de skills para manter orientações de agentes e apoiar o início e o desenvolvimento de projetos pessoais ou de pequenos grupos. As skills de bootstrap incluem `angular-frontend-bootstrap`, `nestjs-backend-bootstrap` e `spring-java-bootstrap`. A skill `harness-feature-planning` planeja features em qualquer projeto usando SDD e documentação em três altitudes; `orchestrate` e `orchestrate-6` orientam a delegação de trabalho multi-etapas para subagentes, com `orchestrate-6` direcionada aos modelos gpt-6.
+Kit de skills e orientações para iniciar e desenvolver sistemas pessoais ou de pequenos grupos com apoio de agentes de IA. As skills de bootstrap incluem `angular-frontend-bootstrap`, `nestjs-backend-bootstrap` e `spring-java-bootstrap`. `harness-feature-planning` apoia o planejamento de features; `orchestrate` e `orchestrate-6` orientam trabalhos com subagentes.
 
-## Workspace com vários repositórios
+## Monorepo com Harness compartilhado
 
-Copie a estrutura deste kit para `workspace/harness` e inicialize o inventário com Node.js:
+Use uma única raiz Git para o sistema inteiro. Copie este kit para a pasta `harness/` nessa raiz e execute:
 
 ```sh
 node harness/scripts/harness.mjs init
 ```
 
-Na primeira execução, ele registra os repositórios Git nas pastas diretamente sob o workspace. Para incluir um projeto aninhado ou ainda sem Git, use `node harness/scripts/harness.mjs add <caminho-relativo>`. Depois peça ao agente: **“Configure o harness para este workspace.”** Ele cria ou atualiza orientações em `harness/` e liga cada repositório à ferramenta escolhida e às skills por symlink. Remover um projeto do inventário não apaga seus links.
+O comando cria `harness/inventory.json`, a orientação geral e pontos de entrada mínimos para Codex (`AGENTS.md`), Claude (`CLAUDE.md`) e Cursor (`.cursor/rules/harness.mdc`). Arquivos existentes são preservados; quando não encaminham para `harness/`, integre a instrução manualmente.
 
-Consulte [a especificação do workspace](docs/specs/workspace-harness/spec.md) e [AGENTS.md](AGENTS.md) para detalhes.
+Registre explicitamente cada componente de código, sem presumir nomes ou profundidade:
 
-## Orientações vivas por projeto
+```sh
+node harness/scripts/harness.mjs add apps/web
+node harness/scripts/harness.mjs add services/api
+```
 
-Cada `harness/projects/<caminho>/` começa com `architecture.md`, `api_conventions.md`, `persistence.md`, `configuration.md`, `tests.md`, `api_docs.md`, `decisions.md`, `business_rules.md` e `security.md`. O script cria templates mínimos; a IA preenche o conteúdo com base no código existente ou nas decisões e etapas consolidadas do bootstrap. Persistência e segurança podem continuar pendentes enquanto outras partes avançam. Swagger é o padrão para novas APIs compatíveis, respeitando alternativas escolhidas e ferramentas existentes.
+O inventário guarda caminhos relativos em `projects`. Todos os componentes, a pasta `harness/` e os pontos de entrada pertencem ao mesmo repositório Git. `add` também cria um `AGENTS.md` pequeno dentro do componente, apontando pelos caminhos relativos corretos para suas orientações centrais e específicas. Não são criados symlinks e o script não procura repositórios internos.
 
-Somente a ferramenta selecionada recebe novos arquivos de orientação. Os documentos temáticos são compartilhados entre ferramentas e referenciados pelo ponto de entrada de Codex ou Cursor. No trabalho cotidiano, a IA deve consultar e atualizar os documentos afetados pelas decisões e mudanças, preservando conteúdo manual válido. O YAML do bootstrap permanece como plano inicial; os Markdown acompanham a evolução.
+Peça ao agente: **“Configure o harness para este workspace.”** O agente consulta o inventário, inspeciona os componentes relevantes e mantém as orientações diretamente em `harness/common/` e `harness/projects/<caminho>/`.
 
-A lista inicial pode mudar. Após adicionar, renomear ou remover documentos diretamente na pasta do projeto, execute `node harness/scripts/harness.mjs sync <caminho>` da raiz do workspace. Edições apenas no conteúdo são lidas diretamente. O marcador `.guidance-initialized` evita recriar documentos removidos; preserve-o. Fontes existentes e destinos ocupados são preservados, inclusive durante a atualização de um Harness anterior.
+## Orientações vivas por componente
 
-Verificação específica do inicializador: `node --test scripts/harness.test.mjs`. Os testes usam workspaces temporários e não exigem dependências.
+Cada componente começa com `architecture.md`, `api_conventions.md`, `persistence.md`, `configuration.md`, `tests.md`, `api_docs.md`, `decisions.md`, `business_rules.md` e `security.md`. O script cria templates mínimos; a IA preenche o conteúdo com base no código existente e nas decisões adotadas.
+
+As orientações específicas prevalecem sobre as gerais. O agente deve carregar somente os documentos pertinentes aos componentes afetados, preservar conteúdo manual válido e distinguir decisões, implementação existente e pendências. O YAML de bootstrap permanece como plano inicial; os Markdown acompanham a evolução.
+
+O marcador `.guidance-initialized` evita recriar documentos removidos. Adições, renomeações e remoções passam a valer diretamente, sem sincronização. Para validar inventário, componentes, fontes e pontos de entrada, execute:
+
+```sh
+node harness/scripts/harness.mjs check
+```
+
+Inventários da versão 1 são migrados por `init` para `version: 2`; fontes e links legados são preservados para revisão manual.
+
+Consulte [a especificação funcional](docs/specs/workspace-harness/spec.md) e [a especificação técnica](docs/specs/workspace-harness/spec-tecnica.md).
+
+Verificação do inicializador: `node --test scripts/harness.test.mjs`. Os testes usam monorepos temporários e não exigem dependências.
 
 ## Licença
 
