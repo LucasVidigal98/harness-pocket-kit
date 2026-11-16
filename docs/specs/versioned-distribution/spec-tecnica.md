@@ -126,6 +126,8 @@ Depois da adoção, atualizações seguem o fluxo normal. Projetos criados a par
 
 Um script sem dependências gera o manifesto, calcula SHA-256 e falha se encontrar symlink, caminho fora da lista permitida ou arquivo não declarado. A lista de distribuição inclui apenas artefatos necessários ao uso do kit; documentação de desenvolvimento e testes do repositório não são copiados automaticamente para projetos consumidores.
 
+Como os hashes representam os bytes publicados, o repositório fixa arquivos de texto em LF por meio de `.gitattributes`. Isso mantém o manifesto reproduzível em checkouts Linux e Windows, independentemente da configuração local de `core.autocrlf`.
+
 O fluxo de publicação:
 
 1. atualizar versão e changelog;
