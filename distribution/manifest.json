@@ -1,0 +1,67 @@
+{
+  "formatVersion": 1,
+  "packageName": "harness-pocket-kit",
+  "packageVersion": "1.0.0",
+  "files": [
+    {
+      "path": ".agents/skills/angular-frontend-bootstrap/SKILL.md",
+      "sha256": "5d943492b894c4d265a237bcba233575cd0229880fdf5a981eeaabf2a6bc07c5"
+    },
+    {
+      "path": ".agents/skills/bootstrap-workspace-project/SKILL.md",
+      "sha256": "53a73a1c5fff36beddadcde90fbbeced67989d53003666d21a7f70f81bf9b778"
+    },
+    {
+      "path": ".agents/skills/configure-workspace-harness/SKILL.md",
+      "sha256": "fec7308961670565c20eced8b3927298c47d8c6ee335f95b3c537d0a567692bf"
+    },
+    {
+      "path": ".agents/skills/configure-workspace-harness/references/project-guidance.md",
+      "sha256": "0185cc271c9238a7d94aa302b6d74992c6ecd926dd33d8cbbf856c07e19e5751"
+    },
+    {
+      "path": ".agents/skills/harness-feature-planning/SKILL.md",
+      "sha256": "6a02b610fda36d4c7ad429d25bd7786325ec3bbb8edbe4526af2476edeb752a8"
+    },
+    {
+      "path": ".agents/skills/harness-feature-planning/references/ambiguity-policy.md",
+      "sha256": "f42d3bf1fec2f8f29abc73e20007b58a5a3d5724babb7a8eae72a96aba9f60e8"
+    },
+    {
+      "path": ".agents/skills/harness-feature-planning/references/pattern-adaptation.md",
+      "sha256": "95cd61f4f6da9c7741b6591c48cb876dd7853a77c83e245ad8c69f457012ff90"
+    },
+    {
+      "path": ".agents/skills/nestjs-backend-bootstrap/SKILL.md",
+      "sha256": "cd3681dbc2b6bec393c5450015dda7a259a8244f0c72b691a48913cca80eb2e0"
+    },
+    {
+      "path": ".agents/skills/nestjs-backend-bootstrap/references/architecture.md",
+      "sha256": "e5fab3e104f9b32d85fa5751793a2b04b6836c53b2b92c70facab2d58dc61a83"
+    },
+    {
+      "path": ".agents/skills/orchestrate-6/SKILL.md",
+      "sha256": "1c397fabb66df8672d47eb557edcd3cb7b274621a77781273f99c97359201924"
+    },
+    {
+      "path": ".agents/skills/orchestrate/SKILL.md",
+      "sha256": "bc53a31cd6b22bff1bb7fc59ac6281300599a5cd0376607201f13087507505d3"
+    },
+    {
+      "path": ".agents/skills/spring-java-bootstrap/SKILL.md",
+      "sha256": "8f57901cb5c3e0095df03fba24dd683e18e24c45699eafbffdd13d96554c3784"
+    },
+    {
+      "path": ".agents/skills/spring-java-bootstrap/references/architecture.md",
+      "sha256": "05872fb55d473724f4e1309b5c572235018c39bec74ba46a8b41a53dd38fdc34"
+    },
+    {
+      "path": "base/guidance.md",
+      "sha256": "6c1aaf262b55f4825937853a73ff583aa5c2e92dc18a0d66416e2a5073fdf7fd"
+    },
+    {
+      "path": "scripts/harness.mjs",
+      "sha256": "5b2ab5d2ec7d5a3f9dc5ece836fabc75d84b97965f9435dee684c6c63ca55230"
+    }
+  ]
+}

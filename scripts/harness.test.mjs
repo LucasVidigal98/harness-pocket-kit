@@ -15,8 +15,10 @@ async function fixture(t) {
   await mkdir(path.join(monorepo, '.git'));
   const harness = path.join(monorepo, 'harness');
   await mkdir(path.join(harness, 'scripts'), { recursive: true });
+  await mkdir(path.join(harness, 'base'), { recursive: true });
   await mkdir(path.join(harness, '.agents', 'skills', 'example'), { recursive: true });
   await cp(path.join(source, 'harness.mjs'), path.join(harness, 'scripts', 'harness.mjs'));
+  await cp(path.join(source, '..', 'base', 'guidance.md'), path.join(harness, 'base', 'guidance.md'));
   const execute = (...args) => spawnSync(process.execPath, [path.join(harness, 'scripts', 'harness.mjs'), ...args], { cwd: monorepo, encoding: 'utf8' });
   const run = (...args) => {
     const result = execute(...args);
@@ -32,9 +34,10 @@ test('init creates a version 2 inventory and root entry points without discoveri
   run('init');
   assert.deepEqual(JSON.parse(await readFile(path.join(harness, 'inventory.json'))), { version: 2, projects: [] });
   assert.match(await readFile(path.join(monorepo, 'AGENTS.md'), 'utf8'), /harness\/inventory\.json/);
+  assert.match(await readFile(path.join(monorepo, 'AGENTS.md'), 'utf8'), /harness\/base\/guidance\.md/);
   assert.match(await readFile(path.join(monorepo, 'CLAUDE.md'), 'utf8'), /harness\/common\/guidance\.md/);
   assert.match(await readFile(path.join(monorepo, '.cursor', 'rules', 'harness.mdc'), 'utf8'), /alwaysApply: true/);
-  assert.match(await readFile(path.join(harness, 'common', 'guidance.md'), 'utf8'), /orientações específicas/i);
+  assert.match(await readFile(path.join(harness, 'common', 'guidance.md'), 'utf8'), /decisões compartilhadas específicas/i);
 });
 
 test('add registers arbitrary nested components, scaffolds guidance and remains idempotent', async (t) => {
@@ -49,6 +52,7 @@ test('add registers arbitrary nested components, scaffolds guidance and remains 
   assert.deepEqual((await readdir(base)).filter((name) => name.endsWith('.md')).sort(), filenames);
   const componentEntry = path.join(monorepo, 'apps', 'web client', 'AGENTS.md');
   const componentInstructions = await readFile(componentEntry, 'utf8');
+  assert.match(componentInstructions, /\.\.\/\.\.\/harness\/base\/guidance\.md/);
   assert.match(componentInstructions, /\.\.\/\.\.\/harness\/common\/guidance\.md/);
   assert.equal((await lstat(componentEntry)).isSymbolicLink(), false);
   await writeFile(path.join(base, 'business_rules.md'), '# Regra manual\nSaldo não pode ser negativo.\n');
@@ -95,6 +99,17 @@ test('existing root files are preserved and check requires a Harness reference',
   assert.equal(await readFile(path.join(monorepo, 'AGENTS.md'), 'utf8'), '# Regras manuais\n');
   const validation = execute('check');
   assert.notEqual(validation.status, 0);
+});
+
+test('init upgrades an exact legacy entry point but preserves customized files', async (t) => {
+  const { monorepo, run } = await fixture(t);
+  run('init');
+  const entryPath = path.join(monorepo, 'AGENTS.md');
+  const current = await readFile(entryPath, 'utf8');
+  const legacy = current.replace('Leia `harness/base/guidance.md` e `harness/common/guidance.md`', 'Leia `harness/common/guidance.md`');
+  await writeFile(entryPath, legacy);
+  run('init');
+  assert.equal(await readFile(entryPath, 'utf8'), current);
 });
 
 test('existing component AGENTS.md is preserved and must reference Harness', async (t) => {

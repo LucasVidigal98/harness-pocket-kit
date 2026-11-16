@@ -6,13 +6,11 @@ import { fileURLToPath } from 'node:url';
 const harnessDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const monorepoDir = path.dirname(harnessDir);
 const inventoryPath = path.join(harnessDir, 'inventory.json');
+const baseGuidancePath = path.join(harnessDir, 'base', 'guidance.md');
 const commonGuidancePath = path.join(harnessDir, 'common', 'guidance.md');
 
-const livingGuidance = `Antes de trabalhar, leia harness/inventory.json, identifique os componentes afetados e consulte apenas os documentos pertinentes em harness/common/ e harness/projects/<path>/.
-As orientações específicas do componente prevalecem sobre as gerais quando houver conflito. Não aplique regras de um componente a outro sem evidência de que são compartilhadas.
-Conforme decisões forem adotadas e a implementação evoluir, atualize os documentos afetados no mesmo trabalho. Preserve conteúdo manual válido e diferencie decisões aprovadas, implementação existente e pendências.
-Os documentos temáticos descrevem o estado vigente; decisions.md registra decisões relevantes e seus motivos conhecidos, identificando decisões substituídas. Não invente justificativas nem registre valores de secrets.
-Quando uma skill em harness/.agents/skills/ corresponder à tarefa, leia seu SKILL.md e siga suas instruções.`;
+const localGuidance = `Registre aqui somente convenções e decisões compartilhadas específicas deste workspace.
+As orientações locais complementam \`harness/base/guidance.md\` e prevalecem sobre a base quando houver conflito explícito.`;
 
 const documents = {
   'architecture.md': ['Arquitetura', 'Organização, camadas, responsabilidades, limites e direção das dependências adotadas.'],
@@ -33,7 +31,7 @@ Este monorepo usa orientações centralizadas em \`harness/\`.
 Antes de trabalhar:
 
 1. Leia \`harness/inventory.json\` e identifique os componentes afetados pela tarefa.
-2. Leia \`harness/common/guidance.md\`.
+2. Leia \`harness/base/guidance.md\` e \`harness/common/guidance.md\`.
 3. Leia os documentos pertinentes em \`harness/projects/<caminho-do-componente>/\` para cada componente afetado.
 4. Quando uma skill em \`harness/.agents/skills/\` corresponder à tarefa, leia o respectivo \`SKILL.md\` e siga suas instruções.
 
@@ -76,7 +74,7 @@ Este componente pertence ao monorepo e usa as orientações centralizadas em \`$
 
 Antes de trabalhar:
 
-1. Leia \`${relativeHarness}/inventory.json\` e \`${relativeHarness}/common/guidance.md\`.
+1. Leia \`${relativeHarness}/inventory.json\`, \`${relativeHarness}/base/guidance.md\` e \`${relativeHarness}/common/guidance.md\`.
 2. Leia os documentos pertinentes em \`${relativeHarness}/projects/${projectPath}/\`.
 3. Quando uma skill em \`${relativeHarness}/.agents/skills/\` corresponder à tarefa, leia seu \`SKILL.md\` e siga suas instruções.
 
@@ -124,6 +122,12 @@ async function writeHarnessFileIfMissing(filePath, content) {
   return true;
 }
 
+function legacyEntryPointContent(content) {
+  return content
+    .replace(/Leia (`[^`]*base\/guidance\.md`) e (`[^`]*common\/guidance\.md`)/, 'Leia $2')
+    .replace(/(`[^`]*inventory\.json`), (`[^`]*base\/guidance\.md`) e (`[^`]*common\/guidance\.md`)/, '$1 e $3');
+}
+
 async function writeEntryPointIfMissing(filePath, content) {
   if (await exists(filePath)) {
     const stat = await lstat(filePath);
@@ -132,7 +136,12 @@ async function writeEntryPointIfMissing(filePath, content) {
       return false;
     }
     const current = await readFile(filePath, 'utf8');
-    if (!current.includes('harness/')) {
+    if (current === legacyEntryPointContent(content)) {
+      await writeFile(filePath, content);
+      console.log(`Ponto de entrada oficial atualizado: ${filePath}`);
+      return true;
+    }
+    if (!current.includes('harness/') || !current.includes('base/guidance.md')) {
       console.warn(`Atenção: integre manualmente as instruções do Harness no arquivo existente: ${filePath}`);
     }
     return false;
@@ -222,7 +231,10 @@ async function ensureComponentEntryPoint(projectPath) {
 }
 
 async function ensureSharedSources() {
-  await writeHarnessFileIfMissing(commonGuidancePath, `# Orientações gerais do monorepo\n\n${livingGuidance}\n`);
+  if (!(await exists(baseGuidancePath))) {
+    throw new Error(`Orientação-base oficial ausente: ${baseGuidancePath}. Reinstale os arquivos gerenciados do Harness.`);
+  }
+  await writeHarnessFileIfMissing(commonGuidancePath, `# Orientações locais do workspace\n\n${localGuidance}\n`);
   for (const [filePath, content] of entryPoints) await writeEntryPointIfMissing(filePath, content);
 }
 
@@ -266,6 +278,7 @@ async function checkEntryPoint(filePath) {
   if (!stat || !stat.isFile() || stat.isSymbolicLink()) return `Ponto de entrada ausente ou inválido: ${filePath}`;
   const content = await readFile(filePath, 'utf8');
   if (!content.includes('harness/')) return `Ponto de entrada não encaminha para harness/: ${filePath}`;
+  if (!content.includes('base/guidance.md')) return `Ponto de entrada não encaminha para a orientação-base: ${filePath}`;
   return null;
 }
 
@@ -274,6 +287,7 @@ async function check(inputPath) {
   if (migrated) throw new Error('Execute "init" para migrar o inventário para a versão 2 antes da validação.');
   const selected = inputPath ? [relativeProjectPath(inputPath)] : inventory.projects.map((project) => project.path);
   const failures = [];
+  if (!(await exists(baseGuidancePath))) failures.push(`Orientação-base oficial ausente: ${baseGuidancePath}`);
   if (!(await exists(commonGuidancePath))) failures.push(`Orientação geral ausente: ${commonGuidancePath}`);
   for (const [filePath] of entryPoints) {
     const failure = await checkEntryPoint(filePath);

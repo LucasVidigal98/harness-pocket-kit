@@ -1,0 +1,20 @@
+{
+  "formatVersion": 1,
+  "paths": [
+    ".agents/skills/angular-frontend-bootstrap/SKILL.md",
+    ".agents/skills/bootstrap-workspace-project/SKILL.md",
+    ".agents/skills/configure-workspace-harness/SKILL.md",
+    ".agents/skills/configure-workspace-harness/references/project-guidance.md",
+    ".agents/skills/harness-feature-planning/SKILL.md",
+    ".agents/skills/harness-feature-planning/references/ambiguity-policy.md",
+    ".agents/skills/harness-feature-planning/references/pattern-adaptation.md",
+    ".agents/skills/nestjs-backend-bootstrap/SKILL.md",
+    ".agents/skills/nestjs-backend-bootstrap/references/architecture.md",
+    ".agents/skills/orchestrate-6/SKILL.md",
+    ".agents/skills/orchestrate/SKILL.md",
+    ".agents/skills/spring-java-bootstrap/SKILL.md",
+    ".agents/skills/spring-java-bootstrap/references/architecture.md",
+    "base/guidance.md",
+    "scripts/harness.mjs"
+  ]
+}

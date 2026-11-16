@@ -1,0 +1,31 @@
+{
+  "name": "harness-pocket-kit",
+  "version": "1.0.0",
+  "description": "CLI sem dependências para instalar e atualizar o Harness Pocket Kit.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LucasVidigal98/harness-pocket-kit.git"
+  },
+  "homepage": "https://github.com/LucasVidigal98/harness-pocket-kit#readme",
+  "bugs": "https://github.com/LucasVidigal98/harness-pocket-kit/issues",
+  "type": "module",
+  "bin": {
+    "harness-pocket-kit": "bin/harness-pocket-kit.mjs"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "distribution",
+    "base/guidance.md",
+    "scripts/harness.mjs",
+    ".agents/skills"
+  ],
+  "scripts": {
+    "generate-manifest": "node distribution/generate-manifest.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
