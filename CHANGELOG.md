@@ -10,6 +10,7 @@ Todas as mudanças relevantes deste projeto serão documentadas aqui. As versõe
 - Manifesto SHA-256 dos arquivos oficiais e registro legível da versão instalada.
 - Atualizações com detecção prévia de conflitos, bloqueio de major e restauração em falha.
 - Separação entre a orientação-base atualizável e as orientações locais do workspace.
+- Configuração sob demanda do MCP Chrome DevTools para Codex e Cursor durante `harness/scripts/harness.mjs init`.
 
 ### Migração
 

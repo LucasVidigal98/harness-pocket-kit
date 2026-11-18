@@ -8,6 +8,8 @@ const monorepoDir = path.dirname(harnessDir);
 const inventoryPath = path.join(harnessDir, 'inventory.json');
 const baseGuidancePath = path.join(harnessDir, 'base', 'guidance.md');
 const commonGuidancePath = path.join(harnessDir, 'common', 'guidance.md');
+const codexMcpConfigPath = path.join(harnessDir, 'base', 'mcp', 'codex-config.toml');
+const cursorMcpConfigPath = path.join(harnessDir, 'base', 'mcp', 'cursor-config.json');
 
 const localGuidance = `Registre aqui somente convenções e decisões compartilhadas específicas deste workspace.
 As orientações locais complementam \`harness/base/guidance.md\` e prevalecem sobre a base quando houver conflito explícito.`;
@@ -46,6 +48,18 @@ const entryPoints = [
 
 function usage() {
   console.log(`Uso:\n  node harness/scripts/harness.mjs init\n  node harness/scripts/harness.mjs add <caminho-relativo>\n  node harness/scripts/harness.mjs check [caminho-relativo]`);
+}
+
+async function writeWorkspaceConfigIfMissing(filePath, sourcePath, label) {
+  if (await exists(filePath)) {
+    console.warn(`Atenção: configuração ${label} já existe e foi preservada: ${filePath}`);
+    return false;
+  }
+  const content = await readFile(sourcePath, 'utf8');
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, content, { flag: 'wx' });
+  console.log(`Configuração ${label} criada: ${filePath}`);
+  return true;
 }
 
 function relativeProjectPath(value) {
@@ -236,6 +250,8 @@ async function ensureSharedSources() {
   }
   await writeHarnessFileIfMissing(commonGuidancePath, `# Orientações locais do workspace\n\n${localGuidance}\n`);
   for (const [filePath, content] of entryPoints) await writeEntryPointIfMissing(filePath, content);
+  await writeWorkspaceConfigIfMissing(path.join(monorepoDir, '.codex', 'config.toml'), codexMcpConfigPath, 'MCP do Codex');
+  await writeWorkspaceConfigIfMissing(path.join(monorepoDir, '.cursor', 'mcp.json'), cursorMcpConfigPath, 'MCP do Cursor');
 }
 
 async function init() {

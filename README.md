@@ -46,6 +46,8 @@ node harness/scripts/harness.mjs add services/api
 
 O inventário guarda caminhos relativos em `projects`. Todos os componentes, a pasta `harness/` e os pontos de entrada pertencem ao mesmo repositório Git. `add` também cria um `AGENTS.md` pequeno dentro do componente, apontando pelos caminhos relativos corretos para suas orientações centrais e específicas. Não são criados symlinks e o script não procura repositórios internos.
 
+O `init` prepara também o MCP Chrome DevTools para Codex (`.codex/config.toml`) e Cursor (`.cursor/mcp.json`), quando esses arquivos ainda não existem. O servidor usa `npx -y chrome-devtools-mcp@latest` e baixa o pacote no primeiro uso; Node.js/npm e Chrome são pré-requisitos. Como o MCP pode ler e modificar páginas abertas, prefira a instância isolada do servidor e não conecte sessões autenticadas sem necessidade.
+
 Peça ao agente: **“Configure o harness para este workspace.”** O agente consulta a base, o inventário e os componentes relevantes e mantém as orientações locais diretamente em `harness/common/` e `harness/projects/<caminho>/`.
 
 ## Orientações vivas por componente

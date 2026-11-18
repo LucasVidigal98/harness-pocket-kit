@@ -18,6 +18,7 @@
     "lib",
     "distribution",
     "base/guidance.md",
+    "base/mcp",
     "scripts/harness.mjs",
     ".agents/skills"
   ],

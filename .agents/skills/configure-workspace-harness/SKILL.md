@@ -19,7 +19,8 @@ Use this skill for requests such as â€œConfigure o harness para este workspaceâ€
 7. For Cursor, edit `harness/common/cursor/rules/general.mdc` and `harness/projects/<relative-path>/cursor/project.mdc`. Link each configured repository with `node harness/scripts/harness.mjs link <relative-path> cursor`. The link exposes both shared and project rules in `.cursor/rules/`.
 8. The shared files are source of truth. After changing common guidance, run `node harness/scripts/harness.mjs sync` so Codex's combined `AGENTS.md` files reflect it. Cursor rules point directly to the shared source.
    Prepare only the chosen tool's sources, preserving manual content. `link` creates missing tool templates; `sync <relative-path>` refreshes the document index after additions, renames or removals. Generated entry points carry living-document maintenance instructions even for previously configured workspaces. Preserve any pre-existing files for other tools.
-9. Report registered repositories, tool choices, created links, and any paths or destinations that need manual attention.
+   `init` also prepares `.codex/config.toml` and `.cursor/mcp.json` with the Chrome DevTools MCP server when those files do not exist. The configuration uses `npx -y chrome-devtools-mcp@latest`, so Node.js/npm and Chrome are prerequisites and the package is fetched on first use. Existing client configurations are preserved; integrate the server manually when the initializer reports a collision.
+9. Report registered repositories, tool choices, created links, and any paths or destinations that need manual attention. When a visual check is relevant, verify the MCP with a harmless local page. Do not use an authenticated browser session unless the user explicitly needs it.
 
 ## Safety
 

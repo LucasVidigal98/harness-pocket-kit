@@ -13,7 +13,7 @@
     },
     {
       "path": ".agents/skills/configure-workspace-harness/SKILL.md",
-      "sha256": "fec7308961670565c20eced8b3927298c47d8c6ee335f95b3c537d0a567692bf"
+      "sha256": "d740791ccea28c84f691f3b987f64ce29a1495695798c5290153e28e72754e23"
     },
     {
       "path": ".agents/skills/configure-workspace-harness/references/project-guidance.md",
@@ -57,11 +57,19 @@
     },
     {
       "path": "base/guidance.md",
-      "sha256": "6c1aaf262b55f4825937853a73ff583aa5c2e92dc18a0d66416e2a5073fdf7fd"
+      "sha256": "0d8c1d4c8897495b972ffb08294b87c1c7ebd6bce589543a2f62519ded34672e"
+    },
+    {
+      "path": "base/mcp/codex-config.toml",
+      "sha256": "c50c9c7c949d51618e4211b6d17df0fee971edc71130f7bde5ef489f4e6df84d"
+    },
+    {
+      "path": "base/mcp/cursor-config.json",
+      "sha256": "22cd77a2e1fa9387cbfe08b7601132d4459349a50d8faf59cdb66b5dd2e80670"
     },
     {
       "path": "scripts/harness.mjs",
-      "sha256": "5b2ab5d2ec7d5a3f9dc5ece836fabc75d84b97965f9435dee684c6c63ca55230"
+      "sha256": "e63c61b1d39ef04dd1fcc6ede6d1b611423cbc50b4406bc7e0c1e0c46560e836"
     }
   ]
 }

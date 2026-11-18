@@ -19,6 +19,9 @@ async function fixture(t) {
   await mkdir(path.join(harness, '.agents', 'skills', 'example'), { recursive: true });
   await cp(path.join(source, 'harness.mjs'), path.join(harness, 'scripts', 'harness.mjs'));
   await cp(path.join(source, '..', 'base', 'guidance.md'), path.join(harness, 'base', 'guidance.md'));
+  await mkdir(path.join(harness, 'base', 'mcp'), { recursive: true });
+  await cp(path.join(source, '..', 'base', 'mcp', 'codex-config.toml'), path.join(harness, 'base', 'mcp', 'codex-config.toml'));
+  await cp(path.join(source, '..', 'base', 'mcp', 'cursor-config.json'), path.join(harness, 'base', 'mcp', 'cursor-config.json'));
   const execute = (...args) => spawnSync(process.execPath, [path.join(harness, 'scripts', 'harness.mjs'), ...args], { cwd: monorepo, encoding: 'utf8' });
   const run = (...args) => {
     const result = execute(...args);
@@ -37,7 +40,22 @@ test('init creates a version 2 inventory and root entry points without discoveri
   assert.match(await readFile(path.join(monorepo, 'AGENTS.md'), 'utf8'), /harness\/base\/guidance\.md/);
   assert.match(await readFile(path.join(monorepo, 'CLAUDE.md'), 'utf8'), /harness\/common\/guidance\.md/);
   assert.match(await readFile(path.join(monorepo, '.cursor', 'rules', 'harness.mdc'), 'utf8'), /alwaysApply: true/);
+  assert.match(await readFile(path.join(monorepo, '.codex', 'config.toml'), 'utf8'), /chrome-devtools-mcp@latest/);
+  assert.deepEqual(JSON.parse(await readFile(path.join(monorepo, '.cursor', 'mcp.json'))), {
+    mcpServers: { 'chrome-devtools': { command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] } },
+  });
   assert.match(await readFile(path.join(harness, 'common', 'guidance.md'), 'utf8'), /decisões compartilhadas específicas/i);
+});
+
+test('init preserves existing client MCP configuration', async (t) => {
+  const { monorepo, run } = await fixture(t);
+  await mkdir(path.join(monorepo, '.codex'), { recursive: true });
+  await mkdir(path.join(monorepo, '.cursor'), { recursive: true });
+  await writeFile(path.join(monorepo, '.codex', 'config.toml'), '[mcp_servers.other]\ncommand = "other"\n');
+  await writeFile(path.join(monorepo, '.cursor', 'mcp.json'), '{"mcpServers":{"other":{"command":"other"}}}\n');
+  run('init');
+  assert.equal(await readFile(path.join(monorepo, '.codex', 'config.toml'), 'utf8'), '[mcp_servers.other]\ncommand = "other"\n');
+  assert.equal(await readFile(path.join(monorepo, '.cursor', 'mcp.json'), 'utf8'), '{"mcpServers":{"other":{"command":"other"}}}\n');
 });
 
 test('add registers arbitrary nested components, scaffolds guidance and remains idempotent', async (t) => {
